@@ -1,0 +1,250 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    name: Build & Verify Linux Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version tag
+        id: vars
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if [[ "$VERSION" == "$GITHUB_REF" ]]; then
+            VERSION="0.1.0-dev"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building Braid version ${VERSION}"
+
+      - name: Set up Nim via mise
+        uses: jdx/mise-action@v4
+        with:
+          tool_versions: |
+            nim 2.2.12
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Compile Linux x86_64 binary
+        run: |
+          mkdir -p dist/linux-amd64
+          nim c -d:release --opt:speed -o:dist/linux-amd64/braid src/braid.nim
+          strip dist/linux-amd64/braid
+          tar -czf dist/braid-linux-amd64.tar.gz -C dist/linux-amd64 braid
+
+      - name: Compile Linux aarch64 binary
+        run: |
+          mkdir -p dist/linux-arm64
+          nim c -d:release --opt:speed --cpu:arm64 --os:linux \
+            --gcc.exe:aarch64-linux-gnu-gcc --gcc.linkerexe:aarch64-linux-gnu-gcc \
+            -o:dist/linux-arm64/braid src/braid.nim
+          aarch64-linux-gnu-strip dist/linux-arm64/braid
+          tar -czf dist/braid-linux-arm64.tar.gz -C dist/linux-arm64 braid
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-assets
+          path: |
+            dist/braid-linux-amd64.tar.gz
+            dist/braid-linux-arm64.tar.gz
+
+  build-macos:
+    name: Build & Verify macOS Packages
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nim via mise
+        uses: jdx/mise-action@v4
+        with:
+          tool_versions: |
+            nim 2.2.12
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile macOS Apple Silicon (arm64) binary
+        run: |
+          mkdir -p dist/darwin-arm64
+          nim c -d:release --opt:speed --cpu:arm64 -o:dist/darwin-arm64/braid src/braid.nim
+          strip dist/darwin-arm64/braid
+          codesign -s - -f dist/darwin-arm64/braid
+          tar -czf dist/braid-darwin-arm64.tar.gz -C dist/darwin-arm64 braid
+
+      - name: Compile macOS Intel (amd64) binary
+        run: |
+          mkdir -p dist/darwin-amd64
+          nim c -d:release --opt:speed --cpu:amd64 -o:dist/darwin-amd64/braid src/braid.nim
+          strip dist/darwin-amd64/braid
+          codesign -s - -f dist/darwin-amd64/braid
+          tar -czf dist/braid-darwin-amd64.tar.gz -C dist/darwin-amd64 braid
+
+      - name: Verify macOS binaries
+        run: |
+          echo "=== Verifying macOS arm64 binary ==="
+          dist/darwin-arm64/braid --version
+          dist/darwin-arm64/braid --help
+
+          echo "=== Verifying macOS amd64 binary via Rosetta ==="
+          arch -x86_64 dist/darwin-amd64/braid --version
+          arch -x86_64 dist/darwin-amd64/braid --help
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-assets
+          path: |
+            dist/braid-darwin-arm64.tar.gz
+            dist/braid-darwin-amd64.tar.gz
+
+  build-windows:
+    name: Build & Verify Windows Package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nim compiler
+        uses: jiro4989/setup-nim-action@v2
+        with:
+          nim-version: '2.2.12'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile native Windows binary
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\windows-amd64
+          nim c -d:release --opt:speed -o:dist\windows-amd64\braid.exe src\braid.nim
+          Compress-Archive -Path dist\windows-amd64\* -DestinationPath dist\braid-windows-amd64.zip -Force
+
+      - name: Verify Windows zip package in clean environment
+        shell: powershell
+        run: |
+          Expand-Archive -Path "dist/braid-windows-amd64.zip" -DestinationPath "C:\clean-braid-test" -Force
+          $verOutput = & "C:\clean-braid-test\braid.exe" --version
+          Write-Host "Version: $verOutput"
+          if (-not ($verOutput -match "braid")) {
+            throw "braid.exe --version failed verification"
+          }
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-assets
+          path: |
+            dist/braid-windows-amd64.zip
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Compute SHA256 Checksums
+        run: |
+          cd release-assets
+          sha256sum braid-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Extract Release Notes from CHANGELOG
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          python3 -c "
+          import re, sys
+          ver = '${GITHUB_REF#refs/tags/v}'
+          try:
+              with open('CHANGELOG.md') as f:
+                  content = f.read()
+              m = re.search(r'## \[?' + re.escape(ver) + r'\]?[^\n]*\n(.*?)(?=\n## \[|\Z)', content, re.DOTALL)
+              notes = m.group(1).strip() if m else ''
+          except Exception:
+              notes = ''
+          if not notes:
+              notes = f'Release v{ver}'
+          with open('RELEASE_NOTES.md', 'w') as out:
+              out.write(notes + '\n')
+          "
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: RELEASE_NOTES.md
+          files: |
+            release-assets/*
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+
+  publish-npm:
+    name: Publish to npm (OIDC)
+    needs: [publish-release]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js (v22)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Check if already published on npm
+        id: npm-check
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          if npm view "${PKG_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "${PKG_NAME}@${VERSION} is already published on npm. Skipping publish step."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "${PKG_NAME}@${VERSION} is not yet published. Proceeding..."
+          fi
+
+      - name: Set up Nim via mise
+        if: steps.npm-check.outputs.already_published == 'false'
+        uses: jdx/mise-action@v4
+        with:
+          tool_versions: |
+            nim 2.2.12
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compile Native Binary for NPM Package
+        if: steps.npm-check.outputs.already_published == 'false'
+        run: |
+          mkdir -p bin
+          nim c -d:release --opt:speed -o:bin/braid src/braid.nim
+          chmod 755 bin/braid bin/run.js scripts/postinstall.js
+
+      - name: Publish to npm via OIDC
+        if: steps.npm-check.outputs.already_published == 'false'
+        run: npm publish --provenance

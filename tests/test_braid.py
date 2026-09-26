@@ -7,9 +7,11 @@ import json
 import os
 import shutil
 import time
+import sys
 from pathlib import Path
 
-BRAID_BIN = Path(__file__).parent.parent / "bin" / "braid"
+_bin_name = "braid.exe" if sys.platform == "win32" or (Path(__file__).parent.parent / "bin" / "braid.exe").exists() else "braid"
+BRAID_BIN = Path(__file__).parent.parent / "bin" / _bin_name
 
 def run_braid(*args, cwd=None):
     cmd = [str(BRAID_BIN)] + list(args)
