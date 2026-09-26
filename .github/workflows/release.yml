@@ -90,7 +90,10 @@ jobs:
       - name: Compile macOS Intel (amd64) binary
         run: |
           mkdir -p dist/darwin-amd64
-          nim c -d:release --opt:speed --cpu:amd64 -o:dist/darwin-amd64/braid src/braid.nim
+          nim c -d:release --opt:speed --cpu:amd64 \
+            --passC:"-target x86_64-apple-macos11" \
+            --passL:"-target x86_64-apple-macos11" \
+            -o:dist/darwin-amd64/braid src/braid.nim
           strip dist/darwin-amd64/braid
           codesign -s - -f dist/darwin-amd64/braid
           tar -czf dist/braid-darwin-amd64.tar.gz -C dist/darwin-amd64 braid
