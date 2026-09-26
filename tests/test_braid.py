@@ -267,11 +267,13 @@ def test_braid_gate_catches_semantic_compiler_failure():
         subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
 
-        # Configure braid.toml with a failing test_command
+        # Configure braid.toml with a failing test_command via a script
+        with open(os.path.join(repo_dir, "fail.py"), "w") as f:
+            f.write("import sys\nprint('Simulated compiler error')\nsys.exit(1)\n")
         with open(os.path.join(repo_dir, "braid.toml"), "w") as f:
-            f.write('[verification]\ntest_command = "python -c \\"import sys; print(\'Simulated compiler error\'); sys.exit(1)\\""\n')
-        subprocess.run(["git", "-C", repo_dir, "add", "braid.toml"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add braid.toml"], check=True)
+            f.write('[verification]\ntest_command = "python fail.py"\n')
+        subprocess.run(["git", "-C", repo_dir, "add", "braid.toml", "fail.py"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add braid.toml and fail.py"], check=True)
 
         task_id = f"task-sem-{int(time.time() * 1000)}"
         code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
