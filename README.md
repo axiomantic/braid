@@ -32,6 +32,14 @@ braid gate
 braid weave
 ```
 
+## Pairing with Locutus / Locu for Multi-Agent Orchestration
+
+Braid provides sub-second APFS CoW workspaces and the Two-Key integration gate for parallel tasks. When orchestrating teams of multiple AI assistants operating simultaneously across strands, pair Braid with [**Locutus**](https://github.com/axiomantic/locutus) (CLI alias: `locu`):
+
+- **Distributed Mutexes & Fencing**: Use `locu lock file:<path> --fencing` to prevent concurrent collisions on non-mergeable schema files or migrations.
+- **Synchronized Task Queues**: Agents claim work via `locu claim queue:<project>:tasks --lease 1800` and report status back over the Redis bus.
+- **Zero Dirty Commits**: Both Locutus and Braid enforce complete decoupling of agent identity from directory paths.
+
 ## Repository Guide Integration
 
 Install the Braid guide into any repository's `AGENTS.md`:

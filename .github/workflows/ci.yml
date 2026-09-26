@@ -1,0 +1,46 @@
+name: Braid CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }} / Nim)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nim via mise
+        uses: jdx/mise-action@v4
+        with:
+          tool_versions: |
+            nim 2.2.12
+            python 3.12
+          cache: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Python test dependencies
+        run: |
+          python3 -m pip install --upgrade pip pytest
+
+      - name: Build Braid binary
+        run: |
+          mkdir -p bin
+          nim c -d:release -o:bin/braid src/braid.nim
+
+      - name: Run automated test suite
+        run: |
+          pytest -v tests/test_braid.py
