@@ -4,7 +4,7 @@
   "description": "Sub-Second APFS Copy-on-Write Workspaces & Zero-Mirage Git Weaving Engine",
   "main": "bin/run.js",
   "bin": {
-    "braid": "./bin/run.js"
+    "braid": "bin/run.js"
   },
   "files": [
     "bin/",
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/axiomantic/braid.git"
+    "url": "git+https://github.com/axiomantic/braid.git"
   },
   "keywords": [
     "git",
