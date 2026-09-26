@@ -269,7 +269,7 @@ def test_braid_gate_catches_semantic_compiler_failure():
 
         # Configure braid.toml with a failing test_command
         with open(os.path.join(repo_dir, "braid.toml"), "w") as f:
-            f.write("[verification]\ntest_command = \"echo 'Simulated compiler error' && exit 1\"\n")
+            f.write('[verification]\ntest_command = "python -c \\"import sys; print(\'Simulated compiler error\'); sys.exit(1)\\""\n')
         subprocess.run(["git", "-C", repo_dir, "add", "braid.toml"], check=True)
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add braid.toml"], check=True)
 
