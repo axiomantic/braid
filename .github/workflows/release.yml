@@ -101,9 +101,14 @@ jobs:
           dist/darwin-arm64/braid --version
           dist/darwin-arm64/braid --help
 
-          echo "=== Verifying macOS amd64 binary via Rosetta ==="
-          arch -x86_64 dist/darwin-amd64/braid --version
-          arch -x86_64 dist/darwin-amd64/braid --help
+          echo "=== Verifying macOS amd64 binary ==="
+          file dist/darwin-amd64/braid | grep -q "x86_64"
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            arch -x86_64 dist/darwin-amd64/braid --version
+            arch -x86_64 dist/darwin-amd64/braid --help
+          else
+            echo "Rosetta 2 not available on runner; verified Mach-O x86_64 via file utility"
+          fi
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
