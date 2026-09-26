@@ -118,22 +118,32 @@ proc doStrandNew*(
     let srcV = repoDir / vdir
     let dstV = strandDir / vdir
     if dirExists(srcV) and not dirExists(dstV):
-      when defined(macosx):
-        discard execCmdEx("cp -c -R " & quoteShell(srcV) & " " & quoteShell(dstV))
-      else:
-        discard execCmdEx("cp -a --reflink=auto " & quoteShell(srcV) & " " & quoteShell(dstV))
+      try:
+        when defined(macosx):
+          discard execCmdEx("cp -c -R " & quoteShell(srcV) & " " & quoteShell(dstV))
+        else:
+          discard execCmdEx("cp -a --reflink=auto " & quoteShell(srcV) & " " & quoteShell(dstV))
+      except CatchableError:
+        discard
 
   # Python Virtual Environment Policy
   let parentVenv = repoDir / ".venv"
   let strandVenv = strandDir / ".venv"
   if dirExists(parentVenv) and not dirExists(strandVenv):
     if isVenvRelocatable(parentVenv):
-      when defined(macosx):
-        discard execCmdEx("cp -c -R " & quoteShell(parentVenv) & " " & quoteShell(strandVenv))
-      else:
-        discard execCmdEx("cp -a --reflink=auto " & quoteShell(parentVenv) & " " & quoteShell(strandVenv))
+      try:
+        when defined(macosx):
+          discard execCmdEx("cp -c -R " & quoteShell(parentVenv) & " " & quoteShell(strandVenv))
+        else:
+          discard execCmdEx("cp -a --reflink=auto " & quoteShell(parentVenv) & " " & quoteShell(strandVenv))
+      except CatchableError:
+        discard
     elif cfg.venvPolicy == "recreate":
-      discard execCmdEx("UV_VENV_RELOCATABLE=1 uv venv " & quoteShell(strandVenv))
+      if findExe("uv").len > 0:
+        try:
+          discard execCmdEx("UV_VENV_RELOCATABLE=1 uv venv " & quoteShell(strandVenv))
+        except CatchableError:
+          discard
 
   # Non-Destructive .envrc Setup
   let envrcPath = strandDir / ".envrc"
@@ -151,7 +161,11 @@ proc doStrandNew*(
   envrcLines.add("export UV_LINK_MODE=\"clone\"")
   envrcLines.add("export NIMCACHE=\"$CACHE_ROOT/nimcache\"")
   writeFile(envrcPath, envrcLines.join("\n") & "\n")
-  discard execCmdEx("direnv allow " & quoteShell(strandDir))
+  if findExe("direnv").len > 0:
+    try:
+      discard execCmdEx("direnv allow " & quoteShell(strandDir))
+    except CatchableError:
+      discard
 
   # Initialize .braid.json Manifest
   let baseCommit = getHeadCommit(repoDir)

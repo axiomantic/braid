@@ -121,7 +121,7 @@ test_command = "pytest tests/ -v"
 def test_braid_strand_lifecycle_and_gate():
     with tempfile.TemporaryDirectory(prefix="braid_repo_") as repo_dir:
         # Initialize test git repo
-        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
 
@@ -205,7 +205,7 @@ def test_braid_strand_lifecycle_and_gate():
 def test_braid_gate_catches_mechanical_conflict():
     """Negative control: Key 1 mechanical conflict gate must reject conflicting strands."""
     with tempfile.TemporaryDirectory(prefix="braid_conflict_") as repo_dir:
-        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
 
@@ -257,7 +257,7 @@ def test_braid_gate_catches_mechanical_conflict():
 def test_braid_gate_catches_semantic_compiler_failure():
     """Negative control: Key 2 semantic gate must reject failing build/test commands."""
     with tempfile.TemporaryDirectory(prefix="braid_compiler_fail_") as repo_dir:
-        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
 
@@ -304,7 +304,7 @@ def test_braid_gate_catches_semantic_compiler_failure():
 def test_braid_strand_envrc_generation():
     """Verify Braid generates a non-destructive polyglot .envrc that chains parent .envrc."""
     with tempfile.TemporaryDirectory(prefix="braid_envrc_") as repo_dir:
-        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
 
@@ -344,7 +344,7 @@ def test_braid_strand_envrc_generation():
 def test_braid_prune():
     """Verify braid prune dry-run and apply lifecycle on completed strands."""
     with tempfile.TemporaryDirectory(prefix="braid_prune_") as repo_dir:
-        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
         subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
 

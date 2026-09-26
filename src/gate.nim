@@ -49,7 +49,10 @@ proc doBraidGate*(
   # --- KEY 1: In-Memory Mechanical Conflict Gate ---
   let t0 = getTime().toUnixFloat()
   let cmd = "git -C " & quoteShell(strandDir) & " merge-tree --write-tree " & quoteShell(baseRef) & " " & quoteShell(branch)
-  let (mtOut, mtCode) = execCmdEx(cmd)
+  let (mtOut, mtCode) = try:
+    execCmdEx(cmd)
+  except CatchableError as e:
+    (e.msg, 1)
   let latencyMs = (getTime().toUnixFloat() - t0) * 1000.0
   res["mechanical_gate_ms"] = %latencyMs
 
@@ -74,7 +77,10 @@ proc doBraidGate*(
     if testCmd.len > 0:
       res["test_command"] = %testCmd
       let tTest0 = getTime().toUnixFloat()
-      let (tOut, tCode) = execCmdEx("cd " & quoteShell(strandDir) & " && " & testCmd)
+      let (tOut, tCode) = try:
+        execCmdEx(testCmd, workingDir = strandDir)
+      except CatchableError as e:
+        (e.msg, 1)
       let testDurationMs = (getTime().toUnixFloat() - tTest0) * 1000.0
       res["test_duration_ms"] = %testDurationMs
 
