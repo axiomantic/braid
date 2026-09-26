@@ -1,0 +1,6 @@
+bin/
+*.o
+*.tmp.*
+nimcache/
+__pycache__/
+.pytest_cache/
