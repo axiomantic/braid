@@ -151,3 +151,102 @@ def test_braid_strand_lifecycle_and_gate():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
+def test_braid_gate_catches_mechanical_conflict():
+    """Negative control: Key 1 mechanical conflict gate must reject conflicting strands."""
+    with tempfile.TemporaryDirectory(prefix="braid_conflict_") as repo_dir:
+        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+
+        readme = os.path.join(repo_dir, "README.md")
+        with open(readme, "w") as f:
+            f.write("Line 1: Original text\n")
+        subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
+
+        # 1. Create Strand
+        task_id = f"task-conf-{int(time.time() * 1000)}"
+        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        assert code == 0
+        strand_path = json.loads(out)["strand_path"]
+
+        try:
+            # 2. Modify line in strand
+            with open(os.path.join(strand_path, "README.md"), "w") as f:
+                f.write("Line 1: Strand modified text\n")
+            subprocess.run(["git", "-C", strand_path, "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", strand_path, "commit", "-q", "-m", "feat: strand edit"], check=True)
+
+            # 3. Modify same line in canonical main (create conflict)
+            with open(readme, "w") as f:
+                f.write("Line 1: Canonical trunk conflicting edit\n")
+            subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "fix: trunk edit"], check=True)
+
+            # 4. Gate must FAIL on Key 1 (code 1)
+            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            assert g_code == 1, f"Expected conflict gate failure (code 1), got {g_code}\nOut: {g_out}"
+            g_data = json.loads(g_out)
+            assert g_data["clean"] is False
+            assert g_data["status"] == "conflict"
+            assert g_data["key1_mechanical"] == "FAIL"
+            assert any("README.md" in c for c in g_data["conflicts"])
+
+            # 5. Weave without --force must be REJECTED
+            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            assert w_code != 0
+            assert "Two-Key Gate" in w_err or "weave_rejected" in w_err
+
+        finally:
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
+def test_braid_gate_catches_semantic_compiler_failure():
+    """Negative control: Key 2 semantic gate must reject failing build/test commands."""
+    with tempfile.TemporaryDirectory(prefix="braid_compiler_fail_") as repo_dir:
+        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+
+        readme = os.path.join(repo_dir, "README.md")
+        with open(readme, "w") as f:
+            f.write("# Project\n")
+        subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
+
+        # Configure braid.toml with a failing test_command
+        with open(os.path.join(repo_dir, "braid.toml"), "w") as f:
+            f.write("[verification]\ntest_command = \"echo 'Simulated compiler error' && exit 1\"\n")
+        subprocess.run(["git", "-C", repo_dir, "add", "braid.toml"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add braid.toml"], check=True)
+
+        task_id = f"task-sem-{int(time.time() * 1000)}"
+        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        assert code == 0
+        strand_path = json.loads(out)["strand_path"]
+
+        try:
+            # Commit a change in strand
+            with open(os.path.join(strand_path, "feature.txt"), "w") as f:
+                f.write("Broken feature\n")
+            subprocess.run(["git", "-C", strand_path, "add", "feature.txt"], check=True)
+            subprocess.run(["git", "-C", strand_path, "commit", "-q", "-m", "feat: broken feature"], check=True)
+
+            # Gate must FAIL on Key 2 (code 2)
+            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            assert g_code == 2, f"Expected semantic failure (code 2), got {g_code}\nOut: {g_out}"
+            g_data = json.loads(g_out)
+            assert g_data["clean"] is False
+            assert g_data["status"] == "semantic_failure"
+            assert g_data["key1_mechanical"] == "PASS"
+            assert g_data["key2_semantic"] == "FAIL"
+            assert "Simulated compiler error" in g_data["compiler_output"]
+
+        finally:
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)

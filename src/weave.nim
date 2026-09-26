@@ -2,7 +2,7 @@
 # Weaves verified strands back into the canonical repository trunk.
 
 import std/[os, osproc, strutils, json]
-import gate, strand
+import gate
 
 proc doBraidWeave*(
   branchParam: string = "",
