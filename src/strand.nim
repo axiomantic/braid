@@ -217,6 +217,7 @@ proc doStrandPrune*(repoDirParam: string = "", maxAgeHours: float = 24.0, dryRun
     let path = item{"strand_path"}.getStr("")
     let status = item{"status"}.getStr("")
     let createdAt = item{"created_at"}.getStr("")
+    let canonRepo = item{"canonical_repo"}.getStr("")
     var ageHours = 0.0
 
     try:
@@ -227,12 +228,21 @@ proc doStrandPrune*(repoDirParam: string = "", maxAgeHours: float = 24.0, dryRun
     let shouldPrune = (status in ["WEAVED", "MERGED", "CLOSED"]) or (ageHours >= maxAgeHours)
     if shouldPrune and dirExists(path):
       if not dryRun:
-        discard execCmdEx("git worktree remove --force " & quoteShell(path))
-        removeDir(path.parentDir())
+        if canonRepo.len > 0 and dirExists(canonRepo):
+          discard execCmdEx("git -C " & quoteShell(canonRepo) & " worktree remove --force " & quoteShell(path))
+          discard execCmdEx("git -C " & quoteShell(canonRepo) & " worktree prune")
+        else:
+          discard execCmdEx("git worktree remove --force " & quoteShell(path))
+        if dirExists(path):
+          try: removeDir(path)
+          except CatchableError: discard
+        if dirExists(path.parentDir()):
+          try: removeDir(path.parentDir())
+          except CatchableError: discard
       var prunedItem = newJObject()
       prunedItem["strand_path"] = %path
       prunedItem["age_hours"] = %ageHours
-      prunedItem["reason"] = if status in ["WEAVED", "MERGED"]: %status else: %"expired"
+      prunedItem["reason"] = if status in ["WEAVED", "MERGED", "CLOSED"]: %status else: %"expired"
       pruned.add(prunedItem)
 
   var res = newJObject()

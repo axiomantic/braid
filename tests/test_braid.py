@@ -52,6 +52,30 @@ def test_braid_guide_lifecycle():
         assert "Successfully uninstalled" in out
         assert "BEGIN BRAID GUIDE" not in target.read_text()
 
+def test_braid_guide_unbalanced_markers_fail_safe():
+    """Negative control: Unbalanced/corrupted guide markers must fail safe and protect content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        target = Path(tmpdir) / "AGENTS.md"
+        corrupted_content = "# Agent Guide\n<!-- BEGIN BRAID GUIDE [v1.0] -->\nOnly opening marker without closing marker\n"
+        target.write_text(corrupted_content)
+
+        # 1. Check must detect MALFORMED and exit code 1
+        code, out, err = run_braid("guide", "check", str(target))
+        assert code == 1
+        assert "[MALFORMED]" in err
+
+        # 2. Install must fail safe and NOT overwrite file
+        code, out, err = run_braid("guide", "install", str(target))
+        assert code == 1
+        assert "Malformed markers" in err
+        assert target.read_text() == corrupted_content
+
+        # 3. Uninstall must fail safe and NOT mutate file
+        code, out, err = run_braid("guide", "uninstall", str(target))
+        assert code == 1
+        assert "Malformed markers" in err
+        assert target.read_text() == corrupted_content
+
 def test_braid_config():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Default config
@@ -60,6 +84,7 @@ def test_braid_config():
         data = json.loads(out)
         assert data["primary_branch"] == "main"
         assert data["venv_policy"] == "prompt"
+        assert "deps" in data["vendor_dirs"]
 
         # Init config
         code, out, err = run_braid("config", "init", cwd=tmpdir)
@@ -67,6 +92,29 @@ def test_braid_config():
         toml_path = Path(tmpdir) / "braid.toml"
         assert toml_path.exists()
         assert "primary_branch" in toml_path.read_text()
+
+def test_braid_custom_config_parsing():
+    """Verify custom braid.toml overrides all configuration fields accurately."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        toml_path = Path(tmpdir) / "braid.toml"
+        toml_path.write_text("""[project]
+primary_branch = "develop"
+
+[strand]
+venv_policy = "recreate"
+vendor_dirs = ["deps", "third_party", "node_modules"]
+
+[verification]
+test_command = "pytest tests/ -v"
+""")
+        code, out, err = run_braid("config", "show", cwd=tmpdir)
+        assert code == 0, f"Error: {err}\nOut: {out}"
+        data = json.loads(out)
+        assert data["primary_branch"] == "develop"
+        assert data["venv_policy"] == "recreate"
+        assert data["vendor_dirs"] == ["deps", "third_party", "node_modules"]
+        assert data["test_command"] == "pytest tests/ -v"
+        assert Path(data["active_config"]).resolve() == toml_path.resolve()
 
 def test_braid_strand_lifecycle_and_gate():
     with tempfile.TemporaryDirectory(prefix="braid_repo_") as repo_dir:
@@ -250,3 +298,97 @@ def test_braid_gate_catches_semantic_compiler_failure():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
+def test_braid_strand_envrc_generation():
+    """Verify Braid generates a non-destructive polyglot .envrc that chains parent .envrc."""
+    with tempfile.TemporaryDirectory(prefix="braid_envrc_") as repo_dir:
+        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+
+        readme = os.path.join(repo_dir, "README.md")
+        with open(readme, "w") as f:
+            f.write("# Project\n")
+        parent_envrc = os.path.join(repo_dir, ".envrc")
+        with open(parent_envrc, "w") as f:
+            f.write("export PARENT_FLAG=active\n")
+
+        subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
+
+        task_id = f"task-envrc-{int(time.time() * 1000)}"
+        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        assert code == 0
+        strand_path = json.loads(out)["strand_path"]
+
+        try:
+            envrc_file = os.path.join(strand_path, ".envrc")
+            assert os.path.isfile(envrc_file), ".envrc must be generated in strand root"
+            content = open(envrc_file).read()
+            assert "source_env" in content, "Must source parent repository .envrc"
+            assert "PROJECT_ROOT=" in content
+            assert "CACHE_ROOT=" in content
+            assert "CCACHE_BASEDIR=" in content
+            assert "CCACHE_NOHASHDIR=1" in content
+            assert "CARGO_TARGET_DIR=" in content
+            assert 'UV_LINK_MODE="clone"' in content
+            assert "NIMCACHE=" in content
+        finally:
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
+def test_braid_prune():
+    """Verify braid prune dry-run and apply lifecycle on completed strands."""
+    with tempfile.TemporaryDirectory(prefix="braid_prune_") as repo_dir:
+        subprocess.run(["git", "init", "-q", repo_dir], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+
+        readme = os.path.join(repo_dir, "README.md")
+        with open(readme, "w") as f:
+            f.write("# Prune test\n")
+        subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
+
+        task_id = f"task-prune-{int(time.time() * 1000)}"
+        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        assert code == 0
+        strand_path = json.loads(out)["strand_path"]
+
+        try:
+            manifest_file = os.path.join(strand_path, ".braid.json")
+            with open(manifest_file) as f:
+                m = json.load(f)
+            # Mark strand as WEAVED
+            m["status"] = "WEAVED"
+            with open(manifest_file, "w") as f:
+                json.dump(m, f)
+
+            # 1. Dry run prune
+            p_code, p_out, p_err = run_braid("prune", "--repo", repo_dir)
+            assert p_code == 0
+            p_data = json.loads(p_out)
+            assert p_data["dry_run"] is True
+            assert p_data["pruned_count"] == 1
+            assert os.path.exists(strand_path), "Dry run must NOT remove strand directory"
+
+            # 2. Apply prune
+            a_code, a_out, a_err = run_braid("prune", "--repo", repo_dir, "--apply")
+            assert a_code == 0
+            a_data = json.loads(a_out)
+            assert a_data["dry_run"] is False
+            assert a_data["pruned_count"] == 1
+            assert not os.path.exists(strand_path), "Prune apply MUST remove strand directory"
+
+            # 3. Verify git worktree cleaned up
+            wt_out = subprocess.run(["git", "-C", repo_dir, "worktree", "list"], capture_output=True, text=True).stdout
+            assert strand_path not in wt_out
+
+        finally:
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
