@@ -158,6 +158,7 @@ proc doStrandNew*(
   let manifest = %*{
     "task_id": taskId,
     "project": projectName,
+    "canonical_repo": repoDir,
     "strand_path": strandDir,
     "branch": branch,
     "base_branch": baseBranch,

@@ -132,8 +132,22 @@ def test_braid_strand_lifecycle_and_gate():
             l_data = json.loads(l_out)
             assert l_data["count"] >= 1
 
+            # 6. Weave strand into canonical repository
+            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            assert w_code == 0, f"Weave failed: {w_err}\nOut: {w_out}"
+            w_data = json.loads(w_out)
+            assert w_data["status"] == "woven"
+
+            # Verify canonical repo received the commit
+            assert os.path.isfile(os.path.join(repo_dir, "feature.txt"))
+            with open(os.path.join(repo_dir, "feature.txt")) as f:
+                assert "Braid feature line" in f.read()
+
+            # Verify strand was pruned
+            assert not os.path.exists(strand_path)
+
         finally:
-            # Clean up worktree
-            subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
-            subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
-            shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)

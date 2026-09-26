@@ -42,22 +42,30 @@ proc doBraidWeave*(
                     else: strandDir.splitPath.tail
 
   let home = getHomeDir()
-  let canonicalRepo = home / "Development" / projectName
+  let canonicalRepo = if manifest != nil and manifest.hasKey("canonical_repo") and dirExists(manifest["canonical_repo"].getStr()):
+                        manifest["canonical_repo"].getStr()
+                      elif dirExists(home / "Development" / projectName):
+                        home / "Development" / projectName
+                      else:
+                        ""
 
-  if not dirExists(canonicalRepo):
+  if canonicalRepo.len == 0 or not dirExists(canonicalRepo):
     var errObj = newJObject()
     errObj["status"] = %"error"
-    errObj["message"] = %("Canonical repository not found at: " & canonicalRepo)
+    errObj["message"] = %("Canonical repository not found for project: " & projectName)
     return (errObj, 1)
 
-  # Step 2: Fetch branch directly from isolated strand into canonical repo
-  let fetchCmd = "git -C " & quoteShell(canonicalRepo) & " fetch " & quoteShell(strandDir) & " " & quoteShell(branch & ":" & branch)
-  let (fOut, fCode) = execCmdEx(fetchCmd)
-  if fCode != 0:
-    var errObj = newJObject()
-    errObj["status"] = %"fetch_failed"
-    errObj["message"] = %("git fetch from strand failed: " & fOut)
-    return (errObj, fCode)
+  # Step 2: Fetch branch directly if it's an isolated clone (rift)
+  let isWorktree = (manifest != nil and manifest.hasKey("tool") and manifest["tool"].getStr() == "git-worktree") or
+                   (execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree list").output.contains(strandDir))
+  if not isWorktree:
+    let fetchCmd = "git -C " & quoteShell(canonicalRepo) & " fetch " & quoteShell(strandDir) & " " & quoteShell(branch & ":" & branch)
+    let (fOut, fCode) = execCmdEx(fetchCmd)
+    if fCode != 0:
+      var errObj = newJObject()
+      errObj["status"] = %"fetch_failed"
+      errObj["message"] = %("git fetch from strand failed: " & fOut)
+      return (errObj, fCode)
 
   # Step 3: Fast-forward merge into base branch in canonical repo
   let checkoutCmd = "git -C " & quoteShell(canonicalRepo) & " checkout " & quoteShell(baseBranch)
@@ -72,8 +80,13 @@ proc doBraidWeave*(
     return (errObj, mCode)
 
   # Step 4: Prune strand directory
-  discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree remove --force " & quoteShell(strandDir))
-  discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree prune")
+  if isWorktree:
+    discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree remove --force " & quoteShell(strandDir))
+    discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree prune")
+  else:
+    try: removeDir(strandDir)
+    except CatchableError: discard
+
   if dirExists(strandDir.parentDir()):
     try: removeDir(strandDir.parentDir())
     except CatchableError: discard
