@@ -15,8 +15,11 @@ Braid provides zero-drag workspace virtualization, polyglot build-cache normaliz
 ## Installation
 
 ```bash
-nim c -d:release --out:bin/braid src/braid.nim
-cp bin/braid ~/.local/bin/braid
+# Install globally via npm:
+npm install -g @axiomantic/braid
+
+# Or run directly without installation via npx:
+npx @axiomantic/braid --help
 ```
 
 ## Quickstart

@@ -18,6 +18,12 @@ const CanonicalGuideContent* = """
 
 Braid manages zero-cost APFS copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
 
+### 0. Self-Bootstrapping Prerequisite
+This project requires `locu` and `braid`. If `command -v locu` or `command -v braid` fails, install them via npm:
+```bash
+npm install -g @axiomantic/locu @axiomantic/braid
+```
+
 ### 1. Invariants & Strand Identity
 * **No Workspace-Scoped Identity Files**:
   Agent identity is strictly decoupled from directory paths. Never create or read `.locutus.agent` or `.braid.agent` in any project or strand directory.

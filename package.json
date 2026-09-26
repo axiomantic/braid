@@ -1,0 +1,37 @@
+{
+  "name": "@axiomantic/braid",
+  "version": "0.1.0",
+  "description": "Sub-Second APFS Copy-on-Write Workspaces & Zero-Mirage Git Weaving Engine",
+  "main": "bin/run.js",
+  "bin": {
+    "braid": "./bin/run.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/axiomantic/braid.git"
+  },
+  "keywords": [
+    "git",
+    "workspaces",
+    "apfs",
+    "cow",
+    "strands",
+    "merging",
+    "ai-agents"
+  ],
+  "author": "axiomantic",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/axiomantic/braid/issues"
+  },
+  "homepage": "https://github.com/axiomantic/braid#readme"
+}

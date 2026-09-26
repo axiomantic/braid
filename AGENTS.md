@@ -7,6 +7,12 @@
 
 Braid manages zero-cost APFS copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
 
+### 0. Self-Bootstrapping Prerequisite
+This project requires `locu` and `braid`. If `command -v locu` or `command -v braid` fails, install them via npm:
+```bash
+npm install -g @axiomantic/locu @axiomantic/braid
+```
+
 ### 1. Invariants & Strand Identity
 * **No Workspace-Scoped Identity Files**:
   Agent identity is strictly decoupled from directory paths. Never create or read `.locutus.agent` or `.braid.agent` in any project or strand directory.
@@ -166,3 +172,46 @@ rm -rf "$STRAND_DIR"
 command -v rift >/dev/null 2>&1 && rift prune >/dev/null 2>&1 || true
 ```
 <!-- END BRAID GUIDE -->
+
+<!-- BEGIN LOCUTUS GUIDE [v1.0] -->
+<!-- DO NOT EDIT DIRECTLY: Managed by `locutus guide install` -->
+
+## Locutus Multi-Agent Coordination Guide
+
+This repository utilizes **Locutus / Locu** for inter-assistant communication, distributed locking, and synchronized task queues over Redis/Valkey.
+
+### 0. Self-Bootstrapping Prerequisite
+This project requires `locu` and `braid`. If `command -v locu` or `command -v braid` fails, install them via npm:
+```bash
+npm install -g @axiomantic/locu @axiomantic/braid
+```
+
+### 1. Invariants & Identity
+* **No Workspace-Scoped Identity Files**:
+  Agent identity is strictly decoupled from directory paths. **Never create or read `.locutus.agent` in any project or workspace directory.** Agent identity is resolved exclusively through:
+  1. `LOCUTUS_AGENT_NAME` environment variable.
+  2. Harness session ID mapping (`LOCUTUS_SESSION_ID=<runtime>:<sessionId>` via `~/.config/locutus/sessions.json` or Redis).
+  3. Explicit CLI flag: `locutus open <name> "<tags>"`.
+* **Zero Dirty Commits**:
+  All agent state, lockfiles, temporary buffers, and session files must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.locutus.*`, `*.lock`).
+
+### 2. Harness Listener Discipline
+* **OpenCode**: Do NOT run `locutus listen` with bash/terminal tools. In-process listening is handled automatically by the OpenCode ear extension (`skills/locutus/opencode-ear.js`).
+* **Claude Code**: Re-arm listeners using `locutus reply ... --listen` or configure the `.claude/settings.json` `Stop` hook.
+* **Antigravity / AGY**: Use reactive background tasks via `run_command` or wake on queue events. Do not poll in a loop.
+* **OpenAI Codex / Pi**: Run `locutus listen <agent>` in the foreground when waiting, or dispatch a one-shot listener subagent.
+
+### 3. Task Claiming & Fencing Protocol
+* **Claiming Work**: When claiming tasks from queues, always negotiate leases:
+  ```bash
+  locutus claim queue:<project>:tasks --lease 1800
+  ```
+* **Fencing Tokens**: Every claimed task yields a monotonic `fencing_token`. Record this token in your task execution manifest. If your lease expires, never write back with an outdated token.
+* **Completion & Ack**:
+  Once task work is verified:
+  ```bash
+  locutus ack queue:<project>:tasks <task_id>
+  locutus reply --to <sender> '{"status": "completed", "task_id": "<task_id>"}'
+  ```
+<!-- END LOCUTUS GUIDE -->
+
