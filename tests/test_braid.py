@@ -396,3 +396,87 @@ def test_braid_prune():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
+def test_braid_diverged_trunk_sync_and_weave():
+    """Verify braid sync reconciles diverged canonical trunk changes into strand before weaving."""
+    with tempfile.TemporaryDirectory(prefix="braid_sync_") as repo_dir:
+        subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+
+        readme = os.path.join(repo_dir, "README.md")
+        with open(readme, "w") as f:
+            f.write("# Diverged Trunk Test Repo\n")
+        subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit C0"], check=True)
+
+        # 1. Create Strand branched at C0
+        task_id = f"task-sync-{int(time.time() * 1000)}"
+        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        assert code == 0, f"Error creating strand: {err}\nOut: {out}"
+        strand_path = json.loads(out)["strand_path"]
+
+        try:
+            # 2. Strand makes a feature commit
+            feat_file = os.path.join(strand_path, "feature.txt")
+            with open(feat_file, "w") as f:
+                f.write("New feature from parallel worker\n")
+            subprocess.run(["git", "-C", strand_path, "add", "feature.txt"], check=True)
+            subprocess.run(["git", "-C", strand_path, "commit", "-q", "-m", "feat: parallel strand feature"], check=True)
+
+            # 3. Canonical trunk advances independently (simulating another agent or developer pushing to trunk)
+            trunk_file = os.path.join(repo_dir, "trunk_update.txt")
+            with open(trunk_file, "w") as f:
+                f.write("Trunk change committed by another worker\n")
+            subprocess.run(["git", "-C", repo_dir, "add", "trunk_update.txt"], check=True)
+            subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: independent trunk commit C_trunk"], check=True)
+
+            # 4. Attempting to weave directly without sync MUST FAIL fast with clear diagnostic
+            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            assert w_code != 0, f"Weave should have failed due to diverged trunk, got code {w_code}\nOut: {w_out}"
+            assert "fast_forward_failed" in w_err or "diverged" in w_err
+            assert "braid sync" in w_err
+
+            # 5. Negative control: dirty working tree in strand blocks sync
+            dirty_file = os.path.join(strand_path, "uncommitted.txt")
+            with open(dirty_file, "w") as f:
+                f.write("uncommitted work\n")
+            subprocess.run(["git", "-C", strand_path, "add", "uncommitted.txt"], check=True)
+            s_fail_code, s_fail_out, s_fail_err = run_braid("sync", "--dir", strand_path, "--base", "main")
+            assert s_fail_code != 0
+            assert "dirty_working_tree" in s_fail_err
+            os.remove(dirty_file)
+            subprocess.run(["git", "-C", strand_path, "reset", "HEAD", "--", "uncommitted.txt"], check=True)
+
+            # 6. Run braid sync to incorporate canonical trunk into strand
+            s_code, s_out, s_err = run_braid("sync", "--dir", strand_path, "--base", "main")
+            assert s_code == 0, f"braid sync failed: {s_err}\nOut: {s_out}"
+            s_data = json.loads(s_out)
+            assert s_data["status"] == "synced"
+            assert s_data["base_branch"] == "main"
+
+            # 7. Verify trunk change is now inside strand
+            assert os.path.isfile(os.path.join(strand_path, "trunk_update.txt"))
+            assert os.path.isfile(os.path.join(strand_path, "feature.txt"))
+
+            # 8. Pass Two-Key Gate
+            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            assert g_code == 0, f"Gate failed: {g_err}\nOut: {g_out}"
+            assert json.loads(g_out)["clean"] is True
+
+            # 9. Now braid weave succeeds with clean fast-forward
+            w_ok_code, w_ok_out, w_ok_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            assert w_ok_code == 0, f"Weave failed after sync: {w_ok_err}\nOut: {w_ok_out}"
+            assert json.loads(w_ok_out)["status"] == "woven"
+
+            # 10. Verify canonical trunk contains both commits
+            assert os.path.isfile(os.path.join(repo_dir, "feature.txt"))
+            assert os.path.isfile(os.path.join(repo_dir, "trunk_update.txt"))
+            assert not os.path.exists(strand_path)
+
+        finally:
+            if os.path.exists(strand_path):
+                subprocess.run(["git", "-C", repo_dir, "worktree", "remove", "--force", strand_path], capture_output=True)
+                subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
+                shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
+
+

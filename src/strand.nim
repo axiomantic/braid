@@ -264,3 +264,97 @@ proc doStrandPrune*(repoDirParam: string = "", maxAgeHours: float = 24.0, dryRun
   res["pruned_count"] = %(pruned.len)
   res["pruned"] = pruned
   return res
+
+proc doStrandSync*(
+  strandDirParam: string = "",
+  baseRefParam: string = "",
+  useRebase: bool = false
+): tuple[output: JsonNode, exitCode: int] =
+  let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
+  let manifestPath = strandDir / ".braid.json"
+  var manifest: JsonNode = nil
+
+  if fileExists(manifestPath):
+    try: manifest = parseJson(readFile(manifestPath))
+    except CatchableError: discard
+
+  # Check working tree cleanliness (tracked changes or staged files, ignoring untracked metadata)
+  let (_, dirtyCode) = execCmdEx("git -C " & quoteShell(strandDir) & " diff-index --quiet HEAD --")
+  if dirtyCode != 0:
+    var errObj = newJObject()
+    errObj["status"] = %"dirty_working_tree"
+    errObj["message"] = %"Working tree has uncommitted changes. Commit or stash them before syncing."
+    return (errObj, 1)
+
+  let branch = if manifest != nil and manifest.hasKey("branch"): manifest["branch"].getStr()
+               else:
+                 let (outp, code) = execCmdEx("git -C " & quoteShell(strandDir) & " rev-parse --abbrev-ref HEAD")
+                 if code == 0: outp.strip() else: "HEAD"
+
+  let baseBranch = if baseRefParam.len > 0: baseRefParam
+                   elif manifest != nil and manifest.hasKey("base_branch"): manifest["base_branch"].getStr()
+                   else: "main"
+
+  let projectName = if manifest != nil and manifest.hasKey("project"): manifest["project"].getStr()
+                    else: strandDir.splitPath.tail
+
+  let home = getHomeDir()
+  let canonicalRepo = if manifest != nil and manifest.hasKey("canonical_repo") and dirExists(manifest["canonical_repo"].getStr()):
+                        manifest["canonical_repo"].getStr()
+                      elif dirExists(home / "Development" / projectName):
+                        home / "Development" / projectName
+                      else:
+                        ""
+
+  if canonicalRepo.len == 0 or not dirExists(canonicalRepo):
+    var errObj = newJObject()
+    errObj["status"] = %"error"
+    errObj["message"] = %("Canonical repository not found for project: " & projectName)
+    return (errObj, 1)
+
+  let isWorktree = (manifest != nil and manifest.hasKey("tool") and manifest["tool"].getStr() == "git-worktree") or
+                   (execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree list").output.contains(strandDir))
+
+  # If not a worktree (e.g. rift clone), fetch baseBranch from canonical repo into strand
+  if not isWorktree:
+    let fetchCmd = "git -C " & quoteShell(strandDir) & " fetch " & quoteShell(canonicalRepo) & " " & quoteShell(baseBranch & ":" & baseBranch)
+    let (fOut, fCode) = execCmdEx(fetchCmd)
+    if fCode != 0:
+      var errObj = newJObject()
+      errObj["status"] = %"fetch_failed"
+      errObj["message"] = %("git fetch from canonical repo failed: " & fOut)
+      return (errObj, fCode)
+
+  # Check canonical repo HEAD of baseBranch
+  let (baseCommitOut, baseCommitCode) = execCmdEx("git -C " & quoteShell(canonicalRepo) & " rev-parse " & quoteShell(baseBranch))
+  let canonicalBaseCommit = if baseCommitCode == 0: baseCommitOut.strip() else: ""
+
+  # Rebase or merge baseBranch into current branch
+  let syncCmd = if useRebase:
+                  "git -C " & quoteShell(strandDir) & " rebase " & quoteShell(baseBranch)
+                else:
+                  "git -C " & quoteShell(strandDir) & " merge --no-edit " & quoteShell(baseBranch)
+  let (sOut, sCode) = execCmdEx(syncCmd)
+  if sCode != 0:
+    var errObj = newJObject()
+    errObj["status"] = %"conflict"
+    errObj["message"] = %("Sync failed due to conflicts with " & baseBranch & ": " & sOut)
+    return (errObj, sCode)
+
+  # Update manifest if present
+  if manifest != nil:
+    if canonicalBaseCommit.len > 0:
+      manifest["base_commit"] = %canonicalBaseCommit
+    manifest["status"] = %"SYNCED"
+    manifest["synced_at"] = %now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
+    writeFile(manifestPath, pretty(manifest))
+
+  var res = newJObject()
+  res["status"] = %"synced"
+  res["branch"] = %branch
+  res["base_branch"] = %baseBranch
+  res["base_commit"] = %canonicalBaseCommit
+  res["strand_path"] = %strandDir
+  res["mode"] = if useRebase: %"rebase" else: %"merge"
+  return (res, 0)
+

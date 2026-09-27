@@ -35,7 +35,7 @@ proc doBraidGate*(
                  let (outp, code) = execCmdEx("git -C " & quoteShell(strandDir) & " rev-parse --abbrev-ref HEAD")
                  if code == 0: outp.strip() else: "HEAD"
 
-  let baseRef = if baseRefParam != "HEAD": baseRefParam
+  let baseRef = if baseRefParam.len > 0 and baseRefParam != "HEAD": baseRefParam
                 elif manifest != nil and manifest.hasKey("base_branch"): manifest["base_branch"].getStr()
                 else: "HEAD"
 

@@ -20,7 +20,10 @@ proc doBraidWeave*(
 
   # Step 1: Run Gate check if not already verified green
   if not force:
-    let (gateRes, gateCode) = doBraidGate(branchParam, baseRefParam, strandDir)
+    let effectiveBase = if baseRefParam.len > 0: baseRefParam
+                        elif manifest != nil and manifest.hasKey("base_branch"): manifest["base_branch"].getStr()
+                        else: "main"
+    let (gateRes, gateCode) = doBraidGate(branchParam, effectiveBase, strandDir)
     if gateCode != 0:
       var errObj = newJObject()
       errObj["status"] = %"weave_rejected"
@@ -76,20 +79,26 @@ proc doBraidWeave*(
   if mCode != 0:
     var errObj = newJObject()
     errObj["status"] = %"fast_forward_failed"
-    errObj["message"] = %("git merge --ff-only failed: " & mOut)
+    errObj["message"] = %("git merge --ff-only failed: " & mOut.strip() & ". Canonical trunk has diverged. Run 'braid sync' inside the strand first.")
     return (errObj, mCode)
 
   # Step 4: Prune strand directory
+  try: setCurrentDir(canonicalRepo)
+  except CatchableError: discard
+
   if isWorktree:
     discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree remove --force " & quoteShell(strandDir))
     discard execCmdEx("git -C " & quoteShell(canonicalRepo) & " worktree prune")
   else:
-    try: removeDir(strandDir)
+    try:
+      if dirExists(strandDir): removeDir(strandDir)
     except CatchableError: discard
 
-  if dirExists(strandDir.parentDir()):
-    try: removeDir(strandDir.parentDir())
-    except CatchableError: discard
+  try:
+    let parent = strandDir.parentDir()
+    if dirExists(parent) and parent != home and parent != home / "Development":
+      removeDir(parent)
+  except CatchableError: discard
 
   var res = newJObject()
   res["status"] = %"woven"

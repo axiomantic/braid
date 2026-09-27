@@ -13,6 +13,7 @@ proc printHelp() =
   echo "  braid new <task_id> [--repo <path>] [--branch <name>] [--base <ref>] [--rift] [--worktree]"
   echo "  braid list [--repo <path>] [--all]"
   echo "  braid gate [branch] [--base <ref>] [--dir <path>] [--skip-tests] [--json]"
+  echo "  braid sync [--dir <path>] [--base <ref>] [--rebase]"
   echo "  braid weave [branch] [--base <ref>] [--dir <path>] [--force]"
   echo "  braid prune [--repo <path>] [--max-age <hours>] [--apply]"
   echo "  braid guide <install|uninstall|check> [path]"
@@ -114,6 +115,29 @@ proc main() =
         stderr.writeLine("[FAILURE] Key 2 Semantic Compiler Gate Failed:")
         stderr.writeLine(res{"compiler_output"}.getStr())
     quit(code)
+
+  of "sync", "rebase":
+    var strandDir = ""
+    var baseRef = ""
+    var useRebase = (cmd == "rebase")
+    var i = 1
+    while i < args.len:
+      let a = args[i]
+      if a == "--dir" and i + 1 < args.len:
+        strandDir = args[i+1]; inc i
+      elif a.startsWith("--dir="): strandDir = a[6..^1]
+      elif a == "--base" and i + 1 < args.len:
+        baseRef = args[i+1]; inc i
+      elif a.startsWith("--base="): baseRef = a[7..^1]
+      elif a == "--rebase": useRebase = true
+      elif not a.startsWith("-") and strandDir.len == 0:
+        strandDir = a
+      inc i
+    let (res, code) = doStrandSync(strandDir, baseRef, useRebase)
+    if code != 0:
+      stderr.writeLine(pretty(res))
+      quit(code)
+    echo pretty(res)
 
   of "weave", "join", "merge":
     var branch = ""
