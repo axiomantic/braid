@@ -1,5 +1,5 @@
-# /Users/eek/Development/braid/src/braid.nim
-# Braid — Sub-Second APFS CoW Workspaces & Zero-Mirage Git Weaving Engine.
+# /Users/eek/Development/vine/src/vine.nim
+# Vine — Sub-Second APFS CoW Workspaces & Zero-Mirage Git Weaving Engine.
 
 import std/[os, strutils, json]
 import strand, gate, weave, guide, config
@@ -7,17 +7,17 @@ import strand, gate, weave, guide, config
 const Version = "0.1.0"
 
 proc printHelp() =
-  echo "Braid v" & Version & " — Sub-Second APFS CoW Workspaces & Zero-Mirage Git Weaving"
+  echo "Vine v" & Version & " — Sub-Second APFS CoW Workspaces & Zero-Mirage Git Weaving"
   echo ""
   echo "Usage:"
-  echo "  braid new <task_id> [--repo <path>] [--branch <name>] [--base <ref>] [--rift] [--worktree]"
-  echo "  braid list [--repo <path>] [--all]"
-  echo "  braid gate [branch] [--base <ref>] [--dir <path>] [--skip-tests] [--json]"
-  echo "  braid sync [--dir <path>] [--base <ref>] [--rebase]"
-  echo "  braid weave [branch] [--base <ref>] [--dir <path>] [--force]"
-  echo "  braid prune [--repo <path>] [--max-age <hours>] [--apply]"
-  echo "  braid guide <install|uninstall|check> [path]"
-  echo "  braid config <init|show> [path]"
+  echo "  vine new <task_id> [--repo <path>] [--branch <name>] [--base <ref>] [--rift] [--worktree]"
+  echo "  vine list [--repo <path>] [--all]"
+  echo "  vine gate [branch] [--base <ref>] [--dir <path>] [--skip-tests] [--json]"
+  echo "  vine sync [--dir <path>] [--base <ref>] [--rebase]"
+  echo "  vine weave [branch] [--base <ref>] [--dir <path>] [--force]"
+  echo "  vine prune [--repo <path>] [--max-age <hours>] [--apply]"
+  echo "  vine guide <install|uninstall|check> [path]"
+  echo "  vine config <init|show> [path]"
   echo ""
   echo "Global Options:"
   echo "  --version, -v    Print version"
@@ -30,14 +30,14 @@ proc main() =
     quit(0)
 
   if args[0] in ["--version", "-v", "version"]:
-    echo "braid " & Version
+    echo "vine " & Version
     quit(0)
 
   let cmd = args[0].toLowerAscii
   case cmd
   of "new", "create", "strand":
     if args.len < 2:
-      stderr.writeLine("Usage: braid new <task_id> [--repo <path>] [--branch <name>] [--base <ref>] [--rift] [--worktree]")
+      stderr.writeLine("Usage: vine new <task_id> [--repo <path>] [--branch <name>] [--base <ref>] [--rift] [--worktree]")
       quit(1)
     let taskId = args[1]
     var repoDir = ""
@@ -181,7 +181,7 @@ proc main() =
 
   of "guide":
     if args.len < 2:
-      stderr.writeLine("Usage: braid guide <install|uninstall|check> [path]")
+      stderr.writeLine("Usage: vine guide <install|uninstall|check> [path]")
       quit(1)
     let action = args[1].toLowerAscii
     let target = if args.len > 2: args[2] else: "AGENTS.md"
@@ -195,8 +195,8 @@ proc main() =
     of "check", "status":
       let st = checkGuide(target)
       case st
-      of gsInstalled: echo "[INSTALLED] Braid Guide is installed in: " & target
-      of gsNotFound: echo "[NOT FOUND] Braid Guide not found in: " & target
+      of gsInstalled: echo "[INSTALLED] Vine Guide is installed in: " & target
+      of gsNotFound: echo "[NOT FOUND] Vine Guide not found in: " & target
       of gsMalformed: (stderr.writeLine("[MALFORMED] Unbalanced markers in: " & target); quit(1))
       of gsFileMissing: echo "[MISSING] Target file does not exist: " & target
     else:
@@ -206,11 +206,11 @@ proc main() =
   of "config":
     let sub = if args.len > 1: args[1] else: "show"
     if sub == "init":
-      let target = getCurrentDir() / "braid.toml"
+      let target = getCurrentDir() / "vine.toml"
       if fileExists(target):
-        echo "braid.toml already exists at: " & target
+        echo "vine.toml already exists at: " & target
       else:
-        writeFile(target, """# braid.toml — Braid Project Configuration
+        writeFile(target, """# vine.toml — Vine Project Configuration
 [project]
 primary_branch = "main"
 
@@ -227,7 +227,7 @@ vendor_dirs = ["deps", "nimbledeps", "vendor", "node_modules", ".zig-cache"]
 """)
         echo "Initialized: " & target
     else:
-      let cfg = loadBraidConfig()
+      let cfg = loadVineConfig()
       var j = newJObject()
       j["primary_branch"] = %cfg.primaryBranch
       j["venv_policy"] = %cfg.venvPolicy

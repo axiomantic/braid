@@ -11,7 +11,7 @@ proc doBraidWeave*(
   force: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = strandDir / ".braid.json"
+  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):
@@ -79,7 +79,7 @@ proc doBraidWeave*(
   if mCode != 0:
     var errObj = newJObject()
     errObj["status"] = %"fast_forward_failed"
-    errObj["message"] = %("git merge --ff-only failed: " & mOut.strip() & ". Canonical trunk has diverged. Run 'braid sync' inside the strand first.")
+    errObj["message"] = %("git merge --ff-only failed: " & mOut.strip() & ". Canonical trunk has diverged. Run 'vine sync' inside the strand first.")
     return (errObj, mCode)
 
   # Step 4: Prune strand directory

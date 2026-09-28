@@ -1,15 +1,17 @@
-# /Users/eek/Development/braid/src/config.nim
-# Configuration reader for braid.toml.
+# /Users/eek/Development/vine/src/config.nim
+# Configuration reader for vine.toml (with backward compatibility for braid.toml).
 
 import std/[os, strutils, tables]
 
 type
-  BraidConfig* = object
+  VineConfig* = object
     primaryBranch*: string
     venvPolicy*: string
     vendorDirs*: seq[string]
     testCommand*: string
     activeConfigFile*: string
+
+  BraidConfig* = VineConfig
 
 proc unquote*(s: string): string =
   let t = s.strip()
@@ -61,10 +63,10 @@ proc parseSimpleToml*(content: string): Table[string, Table[string, string]] =
         result[curSection] = initTable[string, string]()
       result[curSection][key] = val
 
-proc findBraidConfigPath*(startDir: string = getCurrentDir()): string =
+proc findVineConfigPath*(startDir: string = getCurrentDir()): string =
   var cur = startDir
   while true:
-    for candidate in ["braid.toml", ".braid.toml"]:
+    for candidate in ["vine.toml", ".vine.toml", "braid.toml", ".braid.toml"]:
       let p = cur / candidate
       if fileExists(p):
         return p
@@ -76,8 +78,11 @@ proc findBraidConfigPath*(startDir: string = getCurrentDir()): string =
     cur = parent
   return ""
 
-proc loadBraidConfig*(configPath: string = ""): BraidConfig =
-  result = BraidConfig(
+proc findBraidConfigPath*(startDir: string = getCurrentDir()): string =
+  findVineConfigPath(startDir)
+
+proc loadVineConfig*(configPath: string = ""): VineConfig =
+  result = VineConfig(
     primaryBranch: "main",
     venvPolicy: "prompt",
     vendorDirs: @["deps", "nimbledeps", "vendor", "node_modules", ".zig-cache"],
@@ -85,7 +90,7 @@ proc loadBraidConfig*(configPath: string = ""): BraidConfig =
     activeConfigFile: ""
   )
 
-  let path = if configPath.len > 0: configPath else: findBraidConfigPath()
+  let path = if configPath.len > 0: configPath else: findVineConfigPath()
   if path.len == 0 or not fileExists(path):
     return result
 
@@ -106,3 +111,6 @@ proc loadBraidConfig*(configPath: string = ""): BraidConfig =
         if v.len > 0: result.testCommand = v
       else:
         discard
+
+proc loadBraidConfig*(configPath: string = ""): BraidConfig =
+  loadVineConfig(configPath)

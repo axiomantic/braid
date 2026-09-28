@@ -24,7 +24,7 @@ proc createTestGitRepo(prefix: string): string =
   discard execCmdEx("git -C " & quoteShell(repo) & " commit -q -m 'Initial commit'")
   return repo
 
-suite "Braid Native Tripwire Git Passthrough Suite":
+suite "Vine Native Tripwire Git Passthrough Suite":
 
   teardown:
     try: setCurrentDir(initialWorkingDir)
@@ -222,8 +222,8 @@ suite "Braid Native Tripwire Git Passthrough Suite":
         removeDir(repo)
 
       # Write braid.toml with a test command that is guaranteed to fail
-      writeFile(repo / "braid.toml", "[verification]\ntest_command = \"sh -c 'echo Compiler Error && exit 42'\"\n")
-      discard execCmdEx("git -C " & quoteShell(repo) & " add braid.toml")
+      writeFile(repo / "vine.toml", "[verification]\ntest_command = \"sh -c 'echo Compiler Error && exit 42'\"\n")
+      discard execCmdEx("git -C " & quoteShell(repo) & " add vine.toml")
       discard execCmdEx("git -C " & quoteShell(repo) & " commit -q -m 'Add failing test config'")
 
       # Create strand

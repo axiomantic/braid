@@ -1,40 +1,40 @@
-# /Users/eek/Development/braid/src/guide.nim
+# /Users/eek/Development/vine/src/guide.nim
 # Manages installable/uninstallable demarcated documentation blocks in AGENTS.md
-# for the Braid workspace virtualization and strand weaving engine.
+# for the Vine workspace virtualization and strand weaving engine.
 
 import std/[os, strutils]
 
 const
   GuideVersion* = "v1.0"
-  BeginMarker* = "<!-- BEGIN BRAID GUIDE [" & GuideVersion & "] -->"
-  EndMarker* = "<!-- END BRAID GUIDE -->"
-  MarkerPrefix* = "<!-- BEGIN BRAID GUIDE"
+  BeginMarker* = "<!-- BEGIN VINE GUIDE [" & GuideVersion & "] -->"
+  EndMarker* = "<!-- END VINE GUIDE -->"
+  MarkerPrefix* = "<!-- BEGIN VINE GUIDE"
 
 const CanonicalGuideContent* = """
-<!-- BEGIN BRAID GUIDE [v1.0] -->
-<!-- DO NOT EDIT DIRECTLY: Managed by `braid guide install` -->
+<!-- BEGIN VINE GUIDE [v1.0] -->
+<!-- DO NOT EDIT DIRECTLY: Managed by `vine guide install` -->
 
-## Braid Workspace & Strand Coordination Guide
+## Vine Workspace & Strand Coordination Guide
 
-Braid manages zero-cost APFS copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
+Vine manages zero-cost APFS copy-on-write workspaces (**Strands**), polyglot build cache normalizers, and the Two-Key integration gate for parallel agent development.
 
 ### 0. Self-Bootstrapping Prerequisite
-This project requires `locu` and `braid`. If `command -v locu` or `command -v braid` fails, install them via npm:
+This project requires `rhizo` and `vine`. If `command -v rhizo` or `command -v vine` fails, install them via npm:
 ```bash
-npm install -g @axiomantic/locu @axiomantic/braid
+npm install -g @axiomantic/rhizo @axiomantic/vine
 ```
 
 ### 1. Invariants & Strand Identity
 * **No Workspace-Scoped Identity Files**:
-  Agent identity is strictly decoupled from directory paths. Never create or read `.locutus.agent` or `.braid.agent` in any project or strand directory.
+  Agent identity is strictly decoupled from directory paths. Never create or read `.rhizo.agent` or `.vine.agent` in any project or strand directory.
 * **Zero Dirty Commits**:
-  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.braid.json`, `workspaces/`).
+  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.vine.json`, `.braid.json`, `workspaces/`).
 * **Compaction Recovery**:
   Whenever starting a session or recovering from context compaction, inspect active strands before editing canonical files:
   ```bash
-  braid list 2>/dev/null || rift list 2>/dev/null || ls -la ~/Development/workspaces/ 2>/dev/null || true
+  vine list 2>/dev/null || rift list 2>/dev/null || ls -la ~/Development/workspaces/ 2>/dev/null || true
   ```
-  If an assigned task has an active `.braid.json`, re-anchor to that directory instead of touching the canonical repository root.
+  If an assigned task has an active `.vine.json` (or `.braid.json`), re-anchor to that directory instead of touching the canonical repository root.
 
 ---
 
@@ -70,7 +70,7 @@ mkdir -p "$(dirname "$STRAND_DIR")"
      ```bash
      rift create --into "$(dirname "$STRAND_DIR")" --name "<repo>"
      ```
-   - **Monolithic Repositories without Submodules (e.g. locutus, redis)**:
+   - **Monolithic Repositories without Submodules (e.g. rhizo, redis)**:
      Use native Git worktree:
      ```bash
      git worktree add "$STRAND_DIR" -b "<branch>"
@@ -101,7 +101,7 @@ done
    cp -c -R "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv"
    ```
 3. **If NOT relocatable**: **Do not blind-copy** (prevents mutating parent environment via absolute shebangs).
-   - Check `braid.toml` for `venv_policy`:
+   - Check `vine.toml` (or `braid.toml`) for `venv_policy`:
      - If `recreate`: Run `UV_VENV_RELOCATABLE=1 uv venv "$STRAND_DIR/.venv"` (~12ms).
      - If `prompt` (default): Ask user whether to recreate or skip.
 
@@ -131,7 +131,7 @@ export UV_LINK_MODE="clone"
 export NIMCACHE="$CACHE_ROOT/nimcache"
 ```
 
-#### Step 6: Initialize Strand Manifest (`.braid.json`)
+#### Step 6: Initialize Strand Manifest (`.vine.json`)
 ```json
 {
   "task_id": "<task-id>",
@@ -162,7 +162,7 @@ git merge-tree --write-tree "$BASE_BRANCH" HEAD
 #### Key 2: Live Compiler & Test Suite Gate (Zero Green Mirage)
 Execute the project's actual build and test suite inside the Strand:
 ```bash
-# Inferred or from braid.toml [verification] test_command:
+# Inferred or from vine.toml [verification] test_command:
 $BUILD_AND_TEST_COMMAND
 ```
 *Never bypass this gate. `git merge-tree` only verifies text mergeability, not compilation or semantic correctness.*
@@ -182,7 +182,7 @@ git merge --ff-only <branch>
 rm -rf "$STRAND_DIR"
 command -v rift >/dev/null 2>&1 && rift prune >/dev/null 2>&1 || true
 ```
-<!-- END BRAID GUIDE -->"""
+<!-- END VINE GUIDE -->"""
 
 type GuideStatus* = enum
   gsNotFound,
@@ -217,10 +217,10 @@ proc installGuide*(targetPath: string): tuple[success: bool, message: string] =
   try:
     if status == gsFileMissing:
       createDir(targetPath.splitPath.head)
-      let initialContent = "# AGENTS.md — Braid Workspace & Strand Guide\n\n" & CanonicalGuideContent & "\n"
+      let initialContent = "# AGENTS.md — Vine Workspace & Strand Guide\n\n" & CanonicalGuideContent & "\n"
       writeFile(tmpPath, initialContent)
       moveFile(tmpPath, targetPath)
-      return (true, "Created " & targetPath & " and installed Braid Guide [" & GuideVersion & "].")
+      return (true, "Created " & targetPath & " and installed Vine Guide [" & GuideVersion & "].")
 
     let content = readFile(targetPath)
 
@@ -247,7 +247,7 @@ proc installGuide*(targetPath: string): tuple[success: bool, message: string] =
 
       writeFile(tmpPath, newLines.join("\n") & "\n")
       moveFile(tmpPath, targetPath)
-      return (true, "Updated Braid Guide to [" & GuideVersion & "] in " & targetPath & ".")
+      return (true, "Updated Vine Guide to [" & GuideVersion & "] in " & targetPath & ".")
 
     else: # gsNotFound
       var updated = content.strip(trailing = true)
@@ -257,7 +257,7 @@ proc installGuide*(targetPath: string): tuple[success: bool, message: string] =
 
       writeFile(tmpPath, updated)
       moveFile(tmpPath, targetPath)
-      return (true, "Appended Braid Guide [" & GuideVersion & "] to " & targetPath & ".")
+      return (true, "Appended Vine Guide [" & GuideVersion & "] to " & targetPath & ".")
 
   except Exception as e:
     if fileExists(tmpPath):
@@ -275,7 +275,7 @@ proc uninstallGuide*(targetPath: string): tuple[success: bool, message: string] 
     return (false, "Error: Malformed markers detected in " & targetPath & " (one marker found without matching pair). Aborting to prevent data loss.")
 
   if status == gsNotFound:
-    return (true, "Notice: Braid Guide not found in " & targetPath & ". Nothing to uninstall.")
+    return (true, "Notice: Vine Guide not found in " & targetPath & ". Nothing to uninstall.")
 
   let pid = getCurrentProcessId()
   let tmpPath = targetPath & ".tmp." & $pid
@@ -303,7 +303,7 @@ proc uninstallGuide*(targetPath: string): tuple[success: bool, message: string] 
 
     writeFile(tmpPath, resultText)
     moveFile(tmpPath, targetPath)
-    return (true, "Successfully uninstalled Braid Guide from " & targetPath & ".")
+    return (true, "Successfully uninstalled Vine Guide from " & targetPath & ".")
 
   except Exception as e:
     if fileExists(tmpPath):

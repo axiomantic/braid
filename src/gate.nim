@@ -22,7 +22,7 @@ proc doBraidGate*(
   skipTests: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = strandDir / ".braid.json"
+  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):
@@ -39,7 +39,7 @@ proc doBraidGate*(
                 elif manifest != nil and manifest.hasKey("base_branch"): manifest["base_branch"].getStr()
                 else: "HEAD"
 
-  let cfg = loadBraidConfig(strandDir / "braid.toml")
+  let cfg = loadVineConfig(findVineConfigPath(strandDir))
 
   var res = newJObject()
   res["branch"] = %branch
@@ -106,5 +106,7 @@ proc doBraidGate*(
     manifest["merge_tree_sha"] = %treeSha
     manifest["verified_at"] = %now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
     writeFile(manifestPath, pretty(manifest))
+    if fileExists(strandDir / ".vine.json"): writeFile(strandDir / ".vine.json", pretty(manifest))
+    if fileExists(strandDir / ".braid.json"): writeFile(strandDir / ".braid.json", pretty(manifest))
 
   return (res, 0)

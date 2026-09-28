@@ -181,6 +181,7 @@ proc doStrandNew*(
     "created_at": now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'"),
     "tool": toolUsed
   }
+  writeFile(strandDir / ".vine.json", pretty(manifest))
   writeFile(strandDir / ".braid.json", pretty(manifest))
 
   var res = newJObject()
@@ -209,7 +210,7 @@ proc doStrandList*(repoDirParam: string = "", includeAll: bool = false): JsonNod
           if subKind == pcDir:
             for itemKind, leafDir in walkDir(taskDir):
               if itemKind == pcDir:
-                let manifestPath = leafDir / ".braid.json"
+                let manifestPath = if fileExists(leafDir / ".vine.json"): leafDir / ".vine.json" else: leafDir / ".braid.json"
                 if fileExists(manifestPath):
                   try:
                     let j = parseJson(readFile(manifestPath))
@@ -271,7 +272,7 @@ proc doStrandSync*(
   useRebase: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = strandDir / ".braid.json"
+  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):

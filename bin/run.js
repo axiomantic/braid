@@ -8,25 +8,25 @@ function findBinary() {
   const arch = process.arch;
   const platform = process.platform;
 
-  // 1. Direct binary in bin/
-  const directBin = path.join(__dirname, `braid${ext}`);
-  if (fs.existsSync(directBin)) return directBin;
+  // 1. Direct binary in bin/ (vine or braid)
+  for (const name of ['vine', 'braid']) {
+    const directBin = path.join(__dirname, `${name}${ext}`);
+    if (fs.existsSync(directBin)) return directBin;
 
-  // 2. Platform-arch specific binary
-  const platformBin = path.join(__dirname, `braid-${platform}-${arch}${ext}`);
-  if (fs.existsSync(platformBin)) return platformBin;
+    const platformBin = path.join(__dirname, `${name}-${platform}-${arch}${ext}`);
+    if (fs.existsSync(platformBin)) return platformBin;
 
-  // 3. Vendor directory
-  const vendorBin = path.join(__dirname, '..', 'vendor', 'bin', `braid${ext}`);
-  if (fs.existsSync(vendorBin)) return vendorBin;
+    const vendorBin = path.join(__dirname, '..', 'vendor', 'bin', `${name}${ext}`);
+    if (fs.existsSync(vendorBin)) return vendorBin;
+  }
 
   return null;
 }
 
 const binPath = findBinary();
 if (!binPath) {
-  console.error(`Error: @axiomantic/braid native binary not found for ${process.platform}-${process.arch}.`);
-  console.error(`Please visit https://github.com/axiomantic/braid/releases to download.`);
+  console.error(`Error: @axiomantic/vine native binary not found for ${process.platform}-${process.arch}.`);
+  console.error(`Please visit https://github.com/axiomantic/vine/releases to download.`);
   process.exit(1);
 }
 
@@ -40,7 +40,7 @@ const res = spawnSync(binPath, process.argv.slice(2), {
 });
 
 if (res.error) {
-  console.error(`Failed to execute braid: ${res.error.message}`);
+  console.error(`Failed to execute binary: ${res.error.message}`);
   process.exit(1);
 }
 
