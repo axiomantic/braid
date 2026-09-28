@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Weave Directory Lock & Base Ref Passing**: Switched process working directory back to canonical repository root prior to pruning strand worktrees in `braid weave` to prevent macOS directory-in-use deletion errors. Corrected parameter pass-through to ensure effective base ref is passed to the Two-Key integration gate.
+
+### Added
+- **Tripwire Negative Control Verification Suite**: Added end-to-end sandbox tests verifying Key 1 mechanical conflict rejection, Key 2 semantic compiler failure enforcement, strand re-synchronization (`braid sync`), and worktree lifecycle pruning.
+
 ## [0.1.0] - 2026-09-26
 
 ### Added
