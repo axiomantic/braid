@@ -41,12 +41,16 @@ Braid provides sub-second APFS CoW workspaces and the Two-Key integration gate f
 
 - **Distributed Mutexes & Fencing**: Use `locu lock file:<path> --fencing` to prevent concurrent collisions on non-mergeable schema files or migrations.
 - **Synchronized Task Queues**: Agents claim work via `locu claim queue:<project>:tasks --lease 1800` and report status back over the Redis bus.
-- **Zero Dirty Commits**: Both Locutus and Braid enforce complete decoupling of agent identity from directory paths.
+- **Zero Dirty Commits**: Both Locu and Braid enforce complete decoupling of agent identity from directory paths.
 
 ## Repository Guide Integration
 
 Install the Braid guide into any repository's `AGENTS.md`:
 
 ```bash
-braid guide install AGENTS.md
+# Defaults to AGENTS.md in the current working directory:
+braid guide install
+
+# Or specify a custom target path:
+braid guide install /path/to/AGENTS.md
 ```

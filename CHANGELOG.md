@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Comprehensive Contribution Guide (`CONTRIBUTING.md`)**: Complete guide covering system prerequisites (`mise`, `nim 2.2+`, `git 2.38+`), local development setup, build pipeline, the Two-Key Gate verification protocol, and Tripwire test execution.
+- **Tripwire Negative Control Verification Suite**: Added end-to-end sandbox tests verifying Key 1 mechanical conflict rejection, Key 2 semantic compiler failure enforcement, strand re-synchronization (`braid sync`), and worktree lifecycle pruning.
+
+### Changed
+- **Documentation & Coordination Alignment**:
+  - Synchronized embedded coordination guide in `AGENTS.md` via `locu guide install` to incorporate the latest capability-based execution tree and token efficiency rules.
+  - Harmonized naming across `README.md` to reference `Locu` as the primary CLI name.
+  - Updated `README.md` repository guide section to document default target path behavior for `braid guide install`.
+
 ### Fixed
 - **Weave Directory Lock & Base Ref Passing**: Switched process working directory back to canonical repository root prior to pruning strand worktrees in `braid weave` to prevent macOS directory-in-use deletion errors. Corrected parameter pass-through to ensure effective base ref is passed to the Two-Key integration gate.
-
-### Added
-- **Tripwire Negative Control Verification Suite**: Added end-to-end sandbox tests verifying Key 1 mechanical conflict rejection, Key 2 semantic compiler failure enforcement, strand re-synchronization (`braid sync`), and worktree lifecycle pruning.
 
 ## [0.1.0] - 2026-09-26
 

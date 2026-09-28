@@ -7,8 +7,11 @@ import std/[os, osproc, strutils, json, tables, unittest]
 import strand, gate, weave, guide, config
 
 var testRepoCounter = 0
+let initialWorkingDir = getCurrentDir()
 
 proc createTestGitRepo(prefix: string): string =
+  try: setCurrentDir(initialWorkingDir)
+  except CatchableError: discard
   inc testRepoCounter
   let repo = getTempDir() / (prefix & "_" & $getCurrentProcessId() & "_" & $testRepoCounter)
   removeDir(repo)
@@ -23,13 +26,20 @@ proc createTestGitRepo(prefix: string): string =
 
 suite "Braid Native Tripwire Git Passthrough Suite":
 
+  teardown:
+    try: setCurrentDir(initialWorkingDir)
+    except CatchableError: discard
+
   test "Two-Key Gate executes real git merge-tree with Tripwire spy verification":
     sandbox:
       # Allow Git commands to passthrough to real Git binary
       allow(nfos.osprocPluginInstance)
 
       let repo = createTestGitRepo("braid_tw_gate")
-      defer: removeDir(repo)
+      defer:
+        try: setCurrentDir(initialWorkingDir)
+        except CatchableError: discard
+        removeDir(repo)
 
       # 1. Create a strand
       let (sRes, sCode) = doStrandNew(
@@ -74,7 +84,10 @@ suite "Braid Native Tripwire Git Passthrough Suite":
       allow(nfos.osprocPluginInstance)
 
       let repo = createTestGitRepo("braid_tw_sync")
-      defer: removeDir(repo)
+      defer:
+        try: setCurrentDir(initialWorkingDir)
+        except CatchableError: discard
+        removeDir(repo)
 
       # 1. Create a strand at C0
       let (sRes, sCode) = doStrandNew(
@@ -134,7 +147,10 @@ suite "Braid Native Tripwire Git Passthrough Suite":
       allow(nfos.osprocPluginInstance)
 
       let repo = createTestGitRepo("braid_tw_conflict")
-      defer: removeDir(repo)
+      defer:
+        try: setCurrentDir(initialWorkingDir)
+        except CatchableError: discard
+        removeDir(repo)
 
       # Create a file in main
       writeFile(repo / "common.txt", "Initial line 1\nInitial line 2\n")
@@ -200,7 +216,10 @@ suite "Braid Native Tripwire Git Passthrough Suite":
       allow(nfos.osprocPluginInstance)
 
       let repo = createTestGitRepo("braid_tw_semantic")
-      defer: removeDir(repo)
+      defer:
+        try: setCurrentDir(initialWorkingDir)
+        except CatchableError: discard
+        removeDir(repo)
 
       # Write braid.toml with a test command that is guaranteed to fail
       writeFile(repo / "braid.toml", "[verification]\ntest_command = \"sh -c 'echo Compiler Error && exit 42'\"\n")
@@ -253,7 +272,10 @@ suite "Braid Native Tripwire Git Passthrough Suite":
       allow(nfos.osprocPluginInstance)
 
       let repo = createTestGitRepo("braid_tw_prune")
-      defer: removeDir(repo)
+      defer:
+        try: setCurrentDir(initialWorkingDir)
+        except CatchableError: discard
+        removeDir(repo)
 
       # 1. Create a strand
       let (sRes, sCode) = doStrandNew(
