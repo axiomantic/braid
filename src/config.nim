@@ -1,5 +1,4 @@
-# /Users/eek/Development/vine/src/config.nim
-# Configuration reader for vine.toml (with backward compatibility for braid.toml).
+# Configuration reader for vine.toml.
 
 import std/[os, strutils, tables]
 
@@ -66,7 +65,7 @@ proc parseSimpleToml*(content: string): Table[string, Table[string, string]] =
 proc findVineConfigPath*(startDir: string = getCurrentDir()): string =
   var cur = startDir
   while true:
-    for candidate in ["vine.toml", ".vine.toml", "braid.toml", ".braid.toml"]:
+    for candidate in ["vine.toml", ".vine.toml"]:
       let p = cur / candidate
       if fileExists(p):
         return p

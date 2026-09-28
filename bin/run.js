@@ -8,8 +8,8 @@ function findBinary() {
   const arch = process.arch;
   const platform = process.platform;
 
-  // 1. Direct binary in bin/ (vine or braid)
-  for (const name of ['vine', 'braid']) {
+  // 1. Direct binary in bin/ (vine)
+  for (const name of ['vine']) {
     const directBin = path.join(__dirname, `${name}${ext}`);
     if (fs.existsSync(directBin)) return directBin;
 

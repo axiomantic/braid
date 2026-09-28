@@ -28,13 +28,13 @@ npm install -g @axiomantic/rhizo @axiomantic/vine
 * **No Workspace-Scoped Identity Files**:
   Agent identity is strictly decoupled from directory paths. Never create or read `.rhizo.agent` or `.vine.agent` in any project or strand directory.
 * **Zero Dirty Commits**:
-  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.vine.json`, `.braid.json`, `workspaces/`).
+  All strand state, lockfiles, temporary buffers, and manifests must be ignored in `~/.gitignore_global` or `.git/info/exclude`. Never stage or commit coordination metadata (`.vine.json`, `workspaces/`).
 * **Compaction Recovery**:
   Whenever starting a session or recovering from context compaction, inspect active strands before editing canonical files:
   ```bash
   vine list 2>/dev/null || rift list 2>/dev/null || ls -la ~/Development/workspaces/ 2>/dev/null || true
   ```
-  If an assigned task has an active `.vine.json` (or `.braid.json`), re-anchor to that directory instead of touching the canonical repository root.
+  If an assigned task has an active `.vine.json`, re-anchor to that directory instead of touching the canonical repository root.
 
 ---
 
@@ -101,7 +101,7 @@ done
    cp -c -R "$CANONICAL_REPO/.venv" "$STRAND_DIR/.venv"
    ```
 3. **If NOT relocatable**: **Do not blind-copy** (prevents mutating parent environment via absolute shebangs).
-   - Check `vine.toml` (or `braid.toml`) for `venv_policy`:
+   - Check `vine.toml` for `venv_policy`:
      - If `recreate`: Run `UV_VENV_RELOCATABLE=1 uv venv "$STRAND_DIR/.venv"` (~12ms).
      - If `prompt` (default): Ask user whether to recreate or skip.
 

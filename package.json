@@ -4,12 +4,14 @@
   "description": "Sub-Second APFS Copy-on-Write Workspaces & Zero-Mirage Git Weaving Engine",
   "main": "bin/run.js",
   "bin": {
-    "vine": "bin/run.js",
-    "braid": "bin/run.js"
+    "vine": "bin/run.js"
   },
+  "skills": "./skills",
   "files": [
     "bin/",
     "scripts/",
+    "skills/",
+    "SKILL.md",
     "README.md",
     "LICENSE"
   ],

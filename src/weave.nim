@@ -1,4 +1,4 @@
-# /Users/eek/Development/braid/src/weave.nim
+# /Users/eek/Development/vine/src/weave.nim
 # Weaves verified strands back into the canonical repository trunk.
 
 import std/[os, osproc, strutils, json]
@@ -11,7 +11,7 @@ proc doBraidWeave*(
   force: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
+  let manifestPath = strandDir / ".vine.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):

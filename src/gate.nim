@@ -1,4 +1,4 @@
-# /Users/eek/Development/braid/src/gate.nim
+# /Users/eek/Development/vine/src/gate.nim
 # The Two-Key Integration Gate for Braid (Zero Green Mirage).
 
 import std/[os, osproc, strutils, json, times]
@@ -22,7 +22,7 @@ proc doBraidGate*(
   skipTests: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
+  let manifestPath = strandDir / ".vine.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):
@@ -100,13 +100,10 @@ proc doBraidGate*(
   res["status"] = %"green"
   res["clean"] = %true
 
-  # Update .braid.json if present
+  # Update .vine.json if present
   if manifest != nil:
     manifest["status"] = %"READY_FOR_WEAVE"
     manifest["merge_tree_sha"] = %treeSha
     manifest["verified_at"] = %now().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
     writeFile(manifestPath, pretty(manifest))
-    if fileExists(strandDir / ".vine.json"): writeFile(strandDir / ".vine.json", pretty(manifest))
-    if fileExists(strandDir / ".braid.json"): writeFile(strandDir / ".braid.json", pretty(manifest))
-
   return (res, 0)

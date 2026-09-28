@@ -1,4 +1,4 @@
-# /Users/eek/Development/braid/src/strand.nim
+# /Users/eek/Development/vine/src/strand.nim
 # Strand (workspace) provisioning, listing, and lifecycle management for Braid.
 
 import std/[os, osproc, strutils, json, times]
@@ -63,7 +63,7 @@ proc doStrandNew*(
 ): tuple[manifest: JsonNode, exitCode: int] =
   let repoDir = if repoDirParam.len > 0: repoDirParam.normalizedPath else: getRepoRoot()
   let projectName = repoDir.splitPath.tail
-  let cfg = loadBraidConfig(repoDir / "braid.toml")
+  let cfg = loadVineConfig(repoDir / "vine.toml")
 
   let branch = if branchParam.len > 0: branchParam else: "strand/" & taskId
   let baseBranch = if baseRef == "HEAD": cfg.primaryBranch else: baseRef
@@ -167,7 +167,7 @@ proc doStrandNew*(
     except CatchableError:
       discard
 
-  # Initialize .braid.json Manifest
+  # Initialize .vine.json Manifest
   let baseCommit = getHeadCommit(repoDir)
   let manifest = %*{
     "task_id": taskId,
@@ -182,8 +182,7 @@ proc doStrandNew*(
     "tool": toolUsed
   }
   writeFile(strandDir / ".vine.json", pretty(manifest))
-  writeFile(strandDir / ".braid.json", pretty(manifest))
-
+  
   var res = newJObject()
   res["status"] = %"created"
   res["task_id"] = %taskId
@@ -210,7 +209,7 @@ proc doStrandList*(repoDirParam: string = "", includeAll: bool = false): JsonNod
           if subKind == pcDir:
             for itemKind, leafDir in walkDir(taskDir):
               if itemKind == pcDir:
-                let manifestPath = if fileExists(leafDir / ".vine.json"): leafDir / ".vine.json" else: leafDir / ".braid.json"
+                let manifestPath = leafDir / ".vine.json"
                 if fileExists(manifestPath):
                   try:
                     let j = parseJson(readFile(manifestPath))
@@ -272,7 +271,7 @@ proc doStrandSync*(
   useRebase: bool = false
 ): tuple[output: JsonNode, exitCode: int] =
   let strandDir = if strandDirParam.len > 0: strandDirParam.normalizedPath else: getCurrentDir()
-  let manifestPath = if fileExists(strandDir / ".vine.json"): strandDir / ".vine.json" else: strandDir / ".braid.json"
+  let manifestPath = strandDir / ".vine.json"
   var manifest: JsonNode = nil
 
   if fileExists(manifestPath):
