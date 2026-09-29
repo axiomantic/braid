@@ -12,22 +12,49 @@ Vine provides zero-drag workspace virtualization, polyglot build-cache normaliza
 - **The Two-Key Gate**: Ensures zero "Green Mirage" by requiring both Key 1 (in-memory mechanical `git merge-tree` exit 0) and Key 2 (live compiler & test suite exit 0).
 - **Weaving**: Fast-forwards verified strands back into the canonical trunk (`vine weave`).
 
+## Standalone Yet Designed for the Axiomantic Triad
+
+Vine is completely standalone and can be used on its own for sub-second APFS CoW workspace cloning, `.envrc` build-cache normalization, and Two-Key gate verification on any git repository.
+
+However, Vine is designed from the ground up to pair seamlessly with **Rhizo** and **Garden**:
+- [**Rhizo**](https://github.com/axiomantic/rhizo) (Transport & Concurrency): Inter-agent messaging bus, monotonic fencing locks, and task queues over Redis.
+- **Vine** (Workspaces & Verification): Sub-second APFS Copy-on-Write strands, polyglot build-cache normalization, and the Two-Key integration gate (`git merge-tree` mechanical + compiler/test suite semantic checks).
+- [**Garden**](https://github.com/axiomantic/garden) (Swarm Ceremonies): Tmux worker fleet provisioning, 3-stage empirical dialectical pump (research, architecture, audit), and master ceremonial implementation planning.
+
 ## Installation
 
-### 1. For AI Coding Assistants (Interactive Skill Setup)
-Install the skill into your coding assistants (Claude Code, Antigravity, Cursor, etc.):
+### 1. For AI Coding Assistants (Recommended)
+
+Install the skills globally (`-g`) across all your coding assistants (Claude Code, Antigravity, Cursor, Codex, OpenCode, etc.):
+
 ```bash
-npx skills add axiomantic/vine
+# Recommended: Install the complete multi-agent triad globally
+npx skills add -g axiomantic/rhizo
+npx skills add -g axiomantic/vine
+npx skills add -g axiomantic/garden
 ```
-*(The skill automatically self-bootstraps the CLI tool if it isn't already installed on your system).*
+
+*(Each skill automatically self-bootstraps its native CLI binary if it is not already installed on your system).*
+
+To install only Vine:
+```bash
+npx skills add -g axiomantic/vine
+```
 
 ### 2. Standalone CLI Installation
-Install the compiled CLI tool directly onto your `$PATH`:
+
+Install the compiled CLI tools directly onto your `$PATH`:
+
 ```bash
+# Install all three tools:
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+
+# Or install Vine alone:
 npm install -g @axiomantic/vine
 ```
 
 ### 3. Repository Coordination Guide
+
 Install the Vine strand coordination protocol directly into any project's `AGENTS.md`:
 ```bash
 vine guide install
@@ -46,9 +73,9 @@ vine gate
 vine weave
 ```
 
-## Pairing with Rhizo & Garden for Multi-Agent Orchestration
+## Multi-Agent Triad Workflow
 
-Vine provides sub-second APFS CoW workspaces and the Two-Key integration gate for parallel tasks. When orchestrating teams of multiple AI assistants operating simultaneously across strands, pair Vine with [**Rhizo**](https://github.com/axiomantic/rhizo) and [**Garden**](https://github.com/axiomantic/garden):
+When orchestrating teams of multiple AI assistants operating simultaneously across strands, pair Vine with [**Rhizo**](https://github.com/axiomantic/rhizo) and [**Garden**](https://github.com/axiomantic/garden):
 
 - **Distributed Mutexes & Fencing**: Use `rhizo lock file:<path> --fencing` to prevent concurrent collisions on non-mergeable schema files or migrations.
 - **Synchronized Task Queues**: Agents claim work via `rhizo claim queue:<project>:tasks --lease 1800` and report status back over the Redis bus.
