@@ -10,15 +10,20 @@ description: "Sub-Second APFS Copy-on-Write workspaces (Strands), polyglot build
 
 ## 0. Prerequisite & Automatic Bootstrapping
 
-All workspace operations require the native `vine` CLI. If `command -v vine` fails, immediately install it:
+All workspace operations require the native `vine` CLI. If `command -v vine` fails, install it:
 ```bash
+# Recommended: Install globally for fastest native execution (2ms) and clean syntax:
 npm install -g @axiomantic/vine
-```
-Or install the full coordination triad:
-```bash
+
+# Or install the full coordination triad:
 npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
 ```
-Once installed, `vine` is available on `$PATH` and provisions architecture-appropriate binaries automatically.
+
+> [!TIP]
+> **Zero-Install Fallback (`npx`)**: If you are in a restricted environment, container, or CI runner where global installation is prohibited or unavailable, you can run commands directly without installing by prefixing with `npx -y`:
+> ```bash
+> npx -y @axiomantic/vine <command>
+> ```
 
 ---
 
