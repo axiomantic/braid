@@ -1,6 +1,6 @@
 {
   "name": "@axiomantic/vine",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Sub-Second APFS Copy-on-Write Workspaces & Zero-Mirage Git Weaving Engine",
   "main": "bin/run.js",
   "bin": {
@@ -15,9 +15,6 @@
     "README.md",
     "LICENSE"
   ],
-  "scripts": {
-    "postinstall": "node scripts/postinstall.js"
-  },
   "publishConfig": {
     "access": "public"
   },

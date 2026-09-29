@@ -14,12 +14,23 @@ Vine provides zero-drag workspace virtualization, polyglot build-cache normaliza
 
 ## Installation
 
+### 1. For AI Coding Assistants (Interactive Skill Setup)
+Install the skill into your coding assistants (Claude Code, Antigravity, Cursor, etc.):
 ```bash
-# Install globally via npm:
-npm install -g @axiomantic/vine
+npx skills add axiomantic/vine
+```
+*(The skill automatically self-bootstraps the CLI tool if it isn't already installed on your system).*
 
-# Or run directly without installation via npx:
-npx @axiomantic/vine --help
+### 2. Standalone CLI Installation
+Install the compiled CLI tool directly onto your `$PATH`:
+```bash
+npm install -g @axiomantic/vine
+```
+
+### 3. Repository Coordination Guide
+Install the Vine strand coordination protocol directly into any project's `AGENTS.md`:
+```bash
+vine guide install
 ```
 
 ## Quickstart
