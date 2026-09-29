@@ -24,7 +24,7 @@ jobs:
             VERSION="0.1.0-dev"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Building Braid version ${VERSION}"
+          echo "Building Vine version ${VERSION}"
 
       - name: Set up Nim via mise
         uses: jdx/mise-action@v4
@@ -43,26 +43,26 @@ jobs:
       - name: Compile Linux x86_64 binary
         run: |
           mkdir -p dist/linux-amd64
-          nim c -d:release --opt:speed -o:dist/linux-amd64/braid src/braid.nim
-          strip dist/linux-amd64/braid
-          tar -czf dist/braid-linux-amd64.tar.gz -C dist/linux-amd64 braid
+          nim c -d:release --opt:speed -o:dist/linux-amd64/vine src/vine.nim
+          strip dist/linux-amd64/vine
+          tar -czf dist/vine-linux-amd64.tar.gz -C dist/linux-amd64 vine
 
       - name: Compile Linux aarch64 binary
         run: |
           mkdir -p dist/linux-arm64
           nim c -d:release --opt:speed --cpu:arm64 --os:linux \
             --gcc.exe:aarch64-linux-gnu-gcc --gcc.linkerexe:aarch64-linux-gnu-gcc \
-            -o:dist/linux-arm64/braid src/braid.nim
-          aarch64-linux-gnu-strip dist/linux-arm64/braid
-          tar -czf dist/braid-linux-arm64.tar.gz -C dist/linux-arm64 braid
+            -o:dist/linux-arm64/vine src/vine.nim
+          aarch64-linux-gnu-strip dist/linux-arm64/vine
+          tar -czf dist/vine-linux-arm64.tar.gz -C dist/linux-arm64 vine
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-assets
           path: |
-            dist/braid-linux-amd64.tar.gz
-            dist/braid-linux-arm64.tar.gz
+            dist/vine-linux-amd64.tar.gz
+            dist/vine-linux-arm64.tar.gz
 
   build-macos:
     name: Build & Verify macOS Packages
@@ -82,10 +82,10 @@ jobs:
       - name: Compile macOS Apple Silicon (arm64) binary
         run: |
           mkdir -p dist/darwin-arm64
-          nim c -d:release --opt:speed --cpu:arm64 -o:dist/darwin-arm64/braid src/braid.nim
-          strip dist/darwin-arm64/braid
-          codesign -s - -f dist/darwin-arm64/braid
-          tar -czf dist/braid-darwin-arm64.tar.gz -C dist/darwin-arm64 braid
+          nim c -d:release --opt:speed --cpu:arm64 -o:dist/darwin-arm64/vine src/vine.nim
+          strip dist/darwin-arm64/vine
+          codesign -s - -f dist/darwin-arm64/vine
+          tar -czf dist/vine-darwin-arm64.tar.gz -C dist/darwin-arm64 vine
 
       - name: Compile macOS Intel (amd64) binary
         run: |
@@ -93,22 +93,22 @@ jobs:
           nim c -d:release --opt:speed --cpu:amd64 \
             --passC:"-target x86_64-apple-macos11" \
             --passL:"-target x86_64-apple-macos11" \
-            -o:dist/darwin-amd64/braid src/braid.nim
-          strip dist/darwin-amd64/braid
-          codesign -s - -f dist/darwin-amd64/braid
-          tar -czf dist/braid-darwin-amd64.tar.gz -C dist/darwin-amd64 braid
+            -o:dist/darwin-amd64/vine src/vine.nim
+          strip dist/darwin-amd64/vine
+          codesign -s - -f dist/darwin-amd64/vine
+          tar -czf dist/vine-darwin-amd64.tar.gz -C dist/darwin-amd64 vine
 
       - name: Verify macOS binaries
         run: |
           echo "=== Verifying macOS arm64 binary ==="
-          dist/darwin-arm64/braid --version
-          dist/darwin-arm64/braid --help
+          dist/darwin-arm64/vine --version
+          dist/darwin-arm64/vine --help
 
           echo "=== Verifying macOS amd64 binary ==="
-          file dist/darwin-amd64/braid | grep -q "x86_64"
+          file dist/darwin-amd64/vine | grep -q "x86_64"
           if arch -x86_64 /usr/bin/true 2>/dev/null; then
-            arch -x86_64 dist/darwin-amd64/braid --version
-            arch -x86_64 dist/darwin-amd64/braid --help
+            arch -x86_64 dist/darwin-amd64/vine --version
+            arch -x86_64 dist/darwin-amd64/vine --help
           else
             echo "Rosetta 2 not available on runner; verified Mach-O x86_64 via file utility"
           fi
@@ -118,8 +118,8 @@ jobs:
         with:
           name: macos-assets
           path: |
-            dist/braid-darwin-arm64.tar.gz
-            dist/braid-darwin-amd64.tar.gz
+            dist/vine-darwin-arm64.tar.gz
+            dist/vine-darwin-amd64.tar.gz
 
   build-windows:
     name: Build & Verify Windows Package
@@ -137,17 +137,17 @@ jobs:
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force -Path dist\windows-amd64
-          nim c -d:release --opt:speed -o:dist\windows-amd64\braid.exe src\braid.nim
-          Compress-Archive -Path dist\windows-amd64\* -DestinationPath dist\braid-windows-amd64.zip -Force
+          nim c -d:release --opt:speed -o:dist\windows-amd64\vine.exe src\vine.nim
+          Compress-Archive -Path dist\windows-amd64\* -DestinationPath dist\vine-windows-amd64.zip -Force
 
       - name: Verify Windows zip package in clean environment
         shell: powershell
         run: |
-          Expand-Archive -Path "dist/braid-windows-amd64.zip" -DestinationPath "C:\clean-braid-test" -Force
-          $verOutput = & "C:\clean-braid-test\braid.exe" --version
+          Expand-Archive -Path "dist/vine-windows-amd64.zip" -DestinationPath "C:\clean-vine-test" -Force
+          $verOutput = & "C:\clean-vine-test\vine.exe" --version
           Write-Host "Version: $verOutput"
-          if (-not ($verOutput -match "braid")) {
-            throw "braid.exe --version failed verification"
+          if (-not ($verOutput -match "vine")) {
+            throw "vine.exe --version failed verification"
           }
 
       - name: Upload Windows artifacts
@@ -155,7 +155,7 @@ jobs:
         with:
           name: windows-assets
           path: |
-            dist/braid-windows-amd64.zip
+            dist/vine-windows-amd64.zip
 
   publish-release:
     name: Publish GitHub Release
@@ -173,7 +173,7 @@ jobs:
       - name: Compute SHA256 Checksums
         run: |
           cd release-assets
-          sha256sum braid-* > SHA256SUMS.txt
+          sha256sum vine-* > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Extract Release Notes from CHANGELOG
@@ -239,22 +239,11 @@ jobs:
             echo "${PKG_NAME}@${VERSION} is not yet published. Proceeding..."
           fi
 
-      - name: Set up Nim via mise
-        if: steps.npm-check.outputs.already_published == 'false'
-        uses: jdx/mise-action@v4
-        with:
-          tool_versions: |
-            nim 2.2.12
-          cache: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compile Native Binary for NPM Package
+      - name: Prepare npm package files
         if: steps.npm-check.outputs.already_published == 'false'
         run: |
-          mkdir -p bin
-          nim c -d:release --opt:speed -o:bin/braid src/braid.nim
-          chmod 755 bin/braid bin/run.js scripts/postinstall.js
+          rm -f bin/vine bin/vine.exe
+          chmod 755 bin/run.js
 
       - name: Publish to npm via OIDC
         if: steps.npm-check.outputs.already_published == 'false'

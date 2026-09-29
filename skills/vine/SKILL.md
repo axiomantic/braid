@@ -8,6 +8,18 @@ description: "Sub-Second APFS Copy-on-Write workspaces (Strands), polyglot build
 > **Zero-Cost Workspace Virtualization for Autonomous AI Agents**  
 > *Vine provides instantaneous APFS copy-on-write workspaces (Strands), polyglot build-cache normalization, and mechanical + semantic verification gates for parallel AI coding agents.*
 
+## 0. Prerequisite & Automatic Bootstrapping
+
+All workspace operations require the native `vine` CLI. If `command -v vine` fails, immediately install it:
+```bash
+npm install -g @axiomantic/vine
+```
+Or install the full coordination triad:
+```bash
+npm install -g @axiomantic/rhizo @axiomantic/vine @axiomantic/garden
+```
+Once installed, `vine` is available on `$PATH` and provisions architecture-appropriate binaries automatically.
+
 ---
 
 ## 1. Core Primitives

@@ -36,14 +36,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip pytest
 
-      - name: Build Braid binary
+      - name: Build Vine binary
         run: |
           mkdir -p bin
-          nim c -d:release -o:bin/braid src/braid.nim
+          nim c -d:release -o:bin/vine src/vine.nim
 
       - name: Run automated test suite
         run: |
-          python -m pytest -v tests/test_braid.py
+          python -m pytest -v tests/test_vine.py
 
   auto-tag:
     name: Auto-Tag on Version Bump

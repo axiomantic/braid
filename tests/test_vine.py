@@ -1,5 +1,5 @@
-# /Users/eek/Development/braid/tests/test_braid.py
-# Automated end-to-end tests for Braid CLI.
+# /Users/eek/Development/vine/tests/test_vine.py
+# Automated end-to-end tests for Vine CLI.
 
 import subprocess
 import tempfile
@@ -10,78 +10,78 @@ import time
 import sys
 from pathlib import Path
 
-_bin_name = "braid.exe" if sys.platform == "win32" or (Path(__file__).parent.parent / "bin" / "braid.exe").exists() else "braid"
-BRAID_BIN = Path(__file__).parent.parent / "bin" / _bin_name
+_bin_name = "vine.exe" if sys.platform == "win32" or (Path(__file__).parent.parent / "bin" / "vine.exe").exists() else "vine"
+VINE_BIN = Path(__file__).parent.parent / "bin" / _bin_name
 
-def run_braid(*args, cwd=None):
-    cmd = [str(BRAID_BIN)] + list(args)
+def run_vine(*args, cwd=None):
+    cmd = [str(VINE_BIN)] + list(args)
     proc = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     return proc.returncode, proc.stdout, proc.stderr
 
-def test_braid_version():
-    code, out, err = run_braid("--version")
+def test_vine_version():
+    code, out, err = run_vine("--version")
     assert code == 0
-    assert "braid 0.1.0" in out
+    assert "vine 0.1.0" in out
 
-def test_braid_guide_lifecycle():
+def test_vine_guide_lifecycle():
     with tempfile.TemporaryDirectory() as tmpdir:
         target = Path(tmpdir) / "AGENTS.md"
 
         # 1. Check missing
-        code, out, err = run_braid("guide", "check", str(target))
+        code, out, err = run_vine("guide", "check", str(target))
         assert code == 0
         assert "[MISSING]" in out
 
         # 2. Install into new file
-        code, out, err = run_braid("guide", "install", str(target))
+        code, out, err = run_vine("guide", "install", str(target))
         assert code == 0
         assert "Created" in out
         assert target.exists()
 
         content = target.read_text()
-        assert "<!-- BEGIN BRAID GUIDE [v1.0] -->" in content
-        assert "<!-- END BRAID GUIDE -->" in content
-        assert "Braid Workspace & Strand Coordination Guide" in content
+        assert "<!-- BEGIN VINE GUIDE [v1.0] -->" in content
+        assert "<!-- END VINE GUIDE -->" in content
+        assert "Vine Workspace & Strand Coordination Guide" in content
 
         # 3. Check installed
-        code, out, err = run_braid("guide", "check", str(target))
+        code, out, err = run_vine("guide", "check", str(target))
         assert code == 0
         assert "[INSTALLED]" in out
 
         # 4. Uninstall
-        code, out, err = run_braid("guide", "uninstall", str(target))
+        code, out, err = run_vine("guide", "uninstall", str(target))
         assert code == 0
         assert "Successfully uninstalled" in out
-        assert "BEGIN BRAID GUIDE" not in target.read_text()
+        assert "BEGIN VINE GUIDE" not in target.read_text()
 
-def test_braid_guide_unbalanced_markers_fail_safe():
+def test_vine_guide_unbalanced_markers_fail_safe():
     """Negative control: Unbalanced/corrupted guide markers must fail safe and protect content."""
     with tempfile.TemporaryDirectory() as tmpdir:
         target = Path(tmpdir) / "AGENTS.md"
-        corrupted_content = "# Agent Guide\n<!-- BEGIN BRAID GUIDE [v1.0] -->\nOnly opening marker without closing marker\n"
+        corrupted_content = "# Agent Guide\n<!-- BEGIN VINE GUIDE [v1.0] -->\nOnly opening marker without closing marker\n"
         target.write_text(corrupted_content)
 
         # 1. Check must detect MALFORMED and exit code 1
-        code, out, err = run_braid("guide", "check", str(target))
+        code, out, err = run_vine("guide", "check", str(target))
         assert code == 1
         assert "[MALFORMED]" in err
 
         # 2. Install must fail safe and NOT overwrite file
-        code, out, err = run_braid("guide", "install", str(target))
+        code, out, err = run_vine("guide", "install", str(target))
         assert code == 1
         assert "Malformed markers" in err
         assert target.read_text() == corrupted_content
 
         # 3. Uninstall must fail safe and NOT mutate file
-        code, out, err = run_braid("guide", "uninstall", str(target))
+        code, out, err = run_vine("guide", "uninstall", str(target))
         assert code == 1
         assert "Malformed markers" in err
         assert target.read_text() == corrupted_content
 
-def test_braid_config():
+def test_vine_config():
     with tempfile.TemporaryDirectory() as tmpdir:
         # Default config
-        code, out, err = run_braid("config", "show", cwd=tmpdir)
+        code, out, err = run_vine("config", "show", cwd=tmpdir)
         assert code == 0
         data = json.loads(out)
         assert data["primary_branch"] == "main"
@@ -89,16 +89,16 @@ def test_braid_config():
         assert "deps" in data["vendor_dirs"]
 
         # Init config
-        code, out, err = run_braid("config", "init", cwd=tmpdir)
+        code, out, err = run_vine("config", "init", cwd=tmpdir)
         assert code == 0
-        toml_path = Path(tmpdir) / "braid.toml"
+        toml_path = Path(tmpdir) / "vine.toml"
         assert toml_path.exists()
         assert "primary_branch" in toml_path.read_text()
 
-def test_braid_custom_config_parsing():
-    """Verify custom braid.toml overrides all configuration fields accurately."""
+def test_vine_custom_config_parsing():
+    """Verify custom vine.toml overrides all configuration fields accurately."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        toml_path = Path(tmpdir) / "braid.toml"
+        toml_path = Path(tmpdir) / "vine.toml"
         toml_path.write_text("""[project]
 primary_branch = "develop"
 
@@ -109,7 +109,7 @@ vendor_dirs = ["deps", "third_party", "node_modules"]
 [verification]
 test_command = "pytest tests/ -v"
 """)
-        code, out, err = run_braid("config", "show", cwd=tmpdir)
+        code, out, err = run_vine("config", "show", cwd=tmpdir)
         assert code == 0, f"Error: {err}\nOut: {out}"
         data = json.loads(out)
         assert data["primary_branch"] == "develop"
@@ -118,16 +118,16 @@ test_command = "pytest tests/ -v"
         assert data["test_command"] == "pytest tests/ -v"
         assert Path(data["active_config"]).resolve() == toml_path.resolve()
 
-def test_braid_strand_lifecycle_and_gate():
-    with tempfile.TemporaryDirectory(prefix="braid_repo_") as repo_dir:
+def test_vine_strand_lifecycle_and_gate():
+    with tempfile.TemporaryDirectory(prefix="vine_repo_") as repo_dir:
         # Initialize test git repo
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
-            f.write("# Braid Repo\n")
+            f.write("# Vine Repo\n")
         subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
 
@@ -138,7 +138,7 @@ def test_braid_strand_lifecycle_and_gate():
 
         # 1. Create Strand
         task_id = f"task-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0, f"Error: {err}\nOut: {out}"
         data = json.loads(out)
         assert data["status"] == "created"
@@ -146,7 +146,7 @@ def test_braid_strand_lifecycle_and_gate():
         assert os.path.isdir(strand_path)
 
         # Check manifest
-        manifest_file = os.path.join(strand_path, ".braid.json")
+        manifest_file = os.path.join(strand_path, ".vine.json")
         assert os.path.isfile(manifest_file)
         with open(manifest_file) as f:
             m = json.load(f)
@@ -160,12 +160,12 @@ def test_braid_strand_lifecycle_and_gate():
             # 2. Commit a feature in strand
             feat_file = os.path.join(strand_path, "feature.txt")
             with open(feat_file, "w") as f:
-                f.write("Braid feature line\n")
+                f.write("Vine feature line\n")
             subprocess.run(["git", "-C", strand_path, "add", "feature.txt"], check=True)
             subprocess.run(["git", "-C", strand_path, "commit", "-q", "-m", "feat: add feature"], check=True)
 
             # 3. Two-Key Gate
-            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            g_code, g_out, g_err = run_vine("gate", "--dir", strand_path, "--base", "main", "--json")
             assert g_code == 0, f"Gate failed: {g_err}\nOut: {g_out}"
             g_data = json.loads(g_out)
             assert g_data["clean"] is True
@@ -177,13 +177,13 @@ def test_braid_strand_lifecycle_and_gate():
             assert m_updated["status"] == "READY_FOR_WEAVE"
 
             # 5. List strands
-            l_code, l_out, l_err = run_braid("list", "--repo", repo_dir)
+            l_code, l_out, l_err = run_vine("list", "--repo", repo_dir)
             assert l_code == 0
             l_data = json.loads(l_out)
             assert l_data["count"] >= 1
 
             # 6. Weave strand into canonical repository
-            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            w_code, w_out, w_err = run_vine("weave", "--dir", strand_path, "--base", "main")
             assert w_code == 0, f"Weave failed: {w_err}\nOut: {w_out}"
             w_data = json.loads(w_out)
             assert w_data["status"] == "woven"
@@ -191,7 +191,7 @@ def test_braid_strand_lifecycle_and_gate():
             # Verify canonical repo received the commit
             assert os.path.isfile(os.path.join(repo_dir, "feature.txt"))
             with open(os.path.join(repo_dir, "feature.txt")) as f:
-                assert "Braid feature line" in f.read()
+                assert "Vine feature line" in f.read()
 
             # Verify strand was pruned
             assert not os.path.exists(strand_path)
@@ -202,12 +202,12 @@ def test_braid_strand_lifecycle_and_gate():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
-def test_braid_gate_catches_mechanical_conflict():
+def test_vine_gate_catches_mechanical_conflict():
     """Negative control: Key 1 mechanical conflict gate must reject conflicting strands."""
-    with tempfile.TemporaryDirectory(prefix="braid_conflict_") as repo_dir:
+    with tempfile.TemporaryDirectory(prefix="vine_conflict_") as repo_dir:
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
@@ -217,7 +217,7 @@ def test_braid_gate_catches_mechanical_conflict():
 
         # 1. Create Strand
         task_id = f"task-conf-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0
         strand_path = json.loads(out)["strand_path"]
 
@@ -235,7 +235,7 @@ def test_braid_gate_catches_mechanical_conflict():
             subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "fix: trunk edit"], check=True)
 
             # 4. Gate must FAIL on Key 1 (code 1)
-            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            g_code, g_out, g_err = run_vine("gate", "--dir", strand_path, "--base", "main", "--json")
             assert g_code == 1, f"Expected conflict gate failure (code 1), got {g_code}\nOut: {g_out}"
             g_data = json.loads(g_out)
             assert g_data["clean"] is False
@@ -244,7 +244,7 @@ def test_braid_gate_catches_mechanical_conflict():
             assert any("README.md" in c for c in g_data["conflicts"])
 
             # 5. Weave without --force must be REJECTED
-            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            w_code, w_out, w_err = run_vine("weave", "--dir", strand_path, "--base", "main")
             assert w_code != 0
             assert "Two-Key Gate" in w_err or "weave_rejected" in w_err
 
@@ -254,12 +254,12 @@ def test_braid_gate_catches_mechanical_conflict():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
-def test_braid_gate_catches_semantic_compiler_failure():
+def test_vine_gate_catches_semantic_compiler_failure():
     """Negative control: Key 2 semantic gate must reject failing build/test commands."""
-    with tempfile.TemporaryDirectory(prefix="braid_compiler_fail_") as repo_dir:
+    with tempfile.TemporaryDirectory(prefix="vine_compiler_fail_") as repo_dir:
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
@@ -267,16 +267,16 @@ def test_braid_gate_catches_semantic_compiler_failure():
         subprocess.run(["git", "-C", repo_dir, "add", "README.md"], check=True)
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
 
-        # Configure braid.toml with a failing test_command via a script
+        # Configure vine.toml with a failing test_command via a script
         with open(os.path.join(repo_dir, "fail.py"), "w") as f:
             f.write("import sys\nprint('Simulated compiler error')\nsys.exit(1)\n")
-        with open(os.path.join(repo_dir, "braid.toml"), "w") as f:
-            f.write('[verification]\ntest_command = "python fail.py"\n')
-        subprocess.run(["git", "-C", repo_dir, "add", "braid.toml", "fail.py"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add braid.toml and fail.py"], check=True)
+        with open(os.path.join(repo_dir, "vine.toml"), "w") as f:
+            f.write(f'[verification]\ntest_command = "{sys.executable} fail.py"\n')
+        subprocess.run(["git", "-C", repo_dir, "add", "vine.toml", "fail.py"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: add vine.toml and fail.py"], check=True)
 
         task_id = f"task-sem-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0
         strand_path = json.loads(out)["strand_path"]
 
@@ -288,7 +288,7 @@ def test_braid_gate_catches_semantic_compiler_failure():
             subprocess.run(["git", "-C", strand_path, "commit", "-q", "-m", "feat: broken feature"], check=True)
 
             # Gate must FAIL on Key 2 (code 2)
-            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            g_code, g_out, g_err = run_vine("gate", "--dir", strand_path, "--base", "main", "--json")
             assert g_code == 2, f"Expected semantic failure (code 2), got {g_code}\nOut: {g_out}"
             g_data = json.loads(g_out)
             assert g_data["clean"] is False
@@ -303,12 +303,12 @@ def test_braid_gate_catches_semantic_compiler_failure():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
-def test_braid_strand_envrc_generation():
-    """Verify Braid generates a non-destructive polyglot .envrc that chains parent .envrc."""
-    with tempfile.TemporaryDirectory(prefix="braid_envrc_") as repo_dir:
+def test_vine_strand_envrc_generation():
+    """Verify Vine generates a non-destructive polyglot .envrc that chains parent .envrc."""
+    with tempfile.TemporaryDirectory(prefix="vine_envrc_") as repo_dir:
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
@@ -321,7 +321,7 @@ def test_braid_strand_envrc_generation():
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
 
         task_id = f"task-envrc-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0
         strand_path = json.loads(out)["strand_path"]
 
@@ -343,12 +343,12 @@ def test_braid_strand_envrc_generation():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
-def test_braid_prune():
-    """Verify braid prune dry-run and apply lifecycle on completed strands."""
-    with tempfile.TemporaryDirectory(prefix="braid_prune_") as repo_dir:
+def test_vine_prune():
+    """Verify vine prune dry-run and apply lifecycle on completed strands."""
+    with tempfile.TemporaryDirectory(prefix="vine_prune_") as repo_dir:
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
@@ -357,12 +357,12 @@ def test_braid_prune():
         subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "Initial commit"], check=True)
 
         task_id = f"task-prune-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0
         strand_path = json.loads(out)["strand_path"]
 
         try:
-            manifest_file = os.path.join(strand_path, ".braid.json")
+            manifest_file = os.path.join(strand_path, ".vine.json")
             with open(manifest_file) as f:
                 m = json.load(f)
             # Mark strand as WEAVED
@@ -371,7 +371,7 @@ def test_braid_prune():
                 json.dump(m, f)
 
             # 1. Dry run prune
-            p_code, p_out, p_err = run_braid("prune", "--repo", repo_dir)
+            p_code, p_out, p_err = run_vine("prune", "--repo", repo_dir)
             assert p_code == 0
             p_data = json.loads(p_out)
             assert p_data["dry_run"] is True
@@ -379,7 +379,7 @@ def test_braid_prune():
             assert os.path.exists(strand_path), "Dry run must NOT remove strand directory"
 
             # 2. Apply prune
-            a_code, a_out, a_err = run_braid("prune", "--repo", repo_dir, "--apply")
+            a_code, a_out, a_err = run_vine("prune", "--repo", repo_dir, "--apply")
             assert a_code == 0
             a_data = json.loads(a_out)
             assert a_data["dry_run"] is False
@@ -396,12 +396,12 @@ def test_braid_prune():
                 subprocess.run(["git", "-C", repo_dir, "worktree", "prune"], capture_output=True)
                 shutil.rmtree(os.path.dirname(strand_path), ignore_errors=True)
 
-def test_braid_diverged_trunk_sync_and_weave():
-    """Verify braid sync reconciles diverged canonical trunk changes into strand before weaving."""
-    with tempfile.TemporaryDirectory(prefix="braid_sync_") as repo_dir:
+def test_vine_diverged_trunk_sync_and_weave():
+    """Verify vine sync reconciles diverged canonical trunk changes into strand before weaving."""
+    with tempfile.TemporaryDirectory(prefix="vine_sync_") as repo_dir:
         subprocess.run(["git", "init", "-b", "main", "-q", repo_dir], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@braid.mesh"], check=True)
-        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Braid Agent"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.email", "agent@vine.mesh"], check=True)
+        subprocess.run(["git", "-C", repo_dir, "config", "user.name", "Vine Agent"], check=True)
 
         readme = os.path.join(repo_dir, "README.md")
         with open(readme, "w") as f:
@@ -411,7 +411,7 @@ def test_braid_diverged_trunk_sync_and_weave():
 
         # 1. Create Strand branched at C0
         task_id = f"task-sync-{int(time.time() * 1000)}"
-        code, out, err = run_braid("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
+        code, out, err = run_vine("new", task_id, "--repo", repo_dir, "--branch", f"strand/{task_id}", "--worktree")
         assert code == 0, f"Error creating strand: {err}\nOut: {out}"
         strand_path = json.loads(out)["strand_path"]
 
@@ -431,25 +431,25 @@ def test_braid_diverged_trunk_sync_and_weave():
             subprocess.run(["git", "-C", repo_dir, "commit", "-q", "-m", "chore: independent trunk commit C_trunk"], check=True)
 
             # 4. Attempting to weave directly without sync MUST FAIL fast with clear diagnostic
-            w_code, w_out, w_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            w_code, w_out, w_err = run_vine("weave", "--dir", strand_path, "--base", "main")
             assert w_code != 0, f"Weave should have failed due to diverged trunk, got code {w_code}\nOut: {w_out}"
             assert "fast_forward_failed" in w_err or "diverged" in w_err
-            assert "braid sync" in w_err
+            assert "vine sync" in w_err
 
             # 5. Negative control: dirty working tree in strand blocks sync
             dirty_file = os.path.join(strand_path, "uncommitted.txt")
             with open(dirty_file, "w") as f:
                 f.write("uncommitted work\n")
             subprocess.run(["git", "-C", strand_path, "add", "uncommitted.txt"], check=True)
-            s_fail_code, s_fail_out, s_fail_err = run_braid("sync", "--dir", strand_path, "--base", "main")
+            s_fail_code, s_fail_out, s_fail_err = run_vine("sync", "--dir", strand_path, "--base", "main")
             assert s_fail_code != 0
             assert "dirty_working_tree" in s_fail_err
             os.remove(dirty_file)
             subprocess.run(["git", "-C", strand_path, "reset", "HEAD", "--", "uncommitted.txt"], check=True)
 
-            # 6. Run braid sync to incorporate canonical trunk into strand
-            s_code, s_out, s_err = run_braid("sync", "--dir", strand_path, "--base", "main")
-            assert s_code == 0, f"braid sync failed: {s_err}\nOut: {s_out}"
+            # 6. Run vine sync to incorporate canonical trunk into strand
+            s_code, s_out, s_err = run_vine("sync", "--dir", strand_path, "--base", "main")
+            assert s_code == 0, f"vine sync failed: {s_err}\nOut: {s_out}"
             s_data = json.loads(s_out)
             assert s_data["status"] == "synced"
             assert s_data["base_branch"] == "main"
@@ -459,12 +459,12 @@ def test_braid_diverged_trunk_sync_and_weave():
             assert os.path.isfile(os.path.join(strand_path, "feature.txt"))
 
             # 8. Pass Two-Key Gate
-            g_code, g_out, g_err = run_braid("gate", "--dir", strand_path, "--base", "main", "--json")
+            g_code, g_out, g_err = run_vine("gate", "--dir", strand_path, "--base", "main", "--json")
             assert g_code == 0, f"Gate failed: {g_err}\nOut: {g_out}"
             assert json.loads(g_out)["clean"] is True
 
-            # 9. Now braid weave succeeds with clean fast-forward
-            w_ok_code, w_ok_out, w_ok_err = run_braid("weave", "--dir", strand_path, "--base", "main")
+            # 9. Now vine weave succeeds with clean fast-forward
+            w_ok_code, w_ok_out, w_ok_err = run_vine("weave", "--dir", strand_path, "--base", "main")
             assert w_ok_code == 0, f"Weave failed after sync: {w_ok_err}\nOut: {w_ok_out}"
             assert json.loads(w_ok_out)["status"] == "woven"
 

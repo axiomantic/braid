@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-29
+
+### Added
+- **Architecture-Aware Binary Bootstrapping**: `bin/run.js` verifies binary compatibility and automatically downloads pre-built binaries from GitHub Releases into `~/.cache/vine/bin/`.
+- **SKILL.md Self-Bootstrapping Section 0**: Added clear instructions for agents encountering a missing `vine` CLI to run `npm install -g @axiomantic/vine`.
+
+### Fixed
+- **Release CI Multi-Platform Assets**: Automated building and publishing of `vine-linux-amd64.tar.gz`, `vine-darwin-arm64.tar.gz`, etc.
+- **Pure Universal NPM Package**: Excluded host binaries from npm package.
+
 ### Added
 - **Comprehensive Contribution Guide (`CONTRIBUTING.md`)**: Complete guide covering system prerequisites (`mise`, `nim 2.2+`, `git 2.38+`), local development setup, build pipeline, the Two-Key Gate verification protocol, and Tripwire test execution.
 - **Tripwire Negative Control Verification Suite**: Added end-to-end sandbox tests verifying Key 1 mechanical conflict rejection, Key 2 semantic compiler failure enforcement, strand re-synchronization (`braid sync`), and worktree lifecycle pruning.
