@@ -18,10 +18,13 @@ def run_vine(*args, cwd=None):
     proc = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
     return proc.returncode, proc.stdout, proc.stderr
 
+PACKAGE_JSON = Path(__file__).parent.parent / "package.json"
+CANONICAL_VERSION = json.loads(PACKAGE_JSON.read_text()).get("version", "0.1.5")
+
 def test_vine_version():
     code, out, err = run_vine("--version")
     assert code == 0
-    assert "vine 0.1.0" in out
+    assert f"vine {CANONICAL_VERSION}" in out
 
 def test_vine_guide_lifecycle():
     with tempfile.TemporaryDirectory() as tmpdir:
