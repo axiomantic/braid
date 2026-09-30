@@ -1,5 +1,5 @@
 # Package
-version       = "0.1.4"
+version       = "0.1.5"
 author        = "Axiomantic"
 description   = "Sub-Second APFS CoW Workspaces & Zero-Mirage Git Weaving Engine"
 license       = "MIT"

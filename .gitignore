@@ -5,3 +5,6 @@ bin/*
 nimcache/
 __pycache__/
 .pytest_cache/
+nimbledata2.json
+official-nim-releases.json
+packages_*.json

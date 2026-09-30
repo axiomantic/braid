@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-30
+
+### Changed
+- **Rift Workspace Engine & Bootstrapping**: Standardized `rift-snapshot` as the primary copy-on-write workspace virtualization engine across guides and skills, with `--worktree` supported as a fallback.
+- **Operational Invariants Formalization**: Embedded strict XML invariant tags (`<CRITICAL>`, `<INVARIANT>`, `<FORBIDDEN>`) into the coordination guide and skill documentation enforcing the Two-Key Gate before weaving, 1:1 task-to-strand isolation, and zero Git index contamination.
+- **Git Hygiene**: Updated `.gitignore` to prevent nimble cache and test compilation artifacts from being tracked.
+- **Version Alignment**: Synchronized `const Version = "0.1.5"` across `src/vine.nim`, `vine.nimble`, and `package.json`.
+
 ## [0.1.4] - 2026-09-29
 
 ### Added
