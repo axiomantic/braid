@@ -19,7 +19,7 @@ def run_vine(*args, cwd=None):
     return proc.returncode, proc.stdout, proc.stderr
 
 PACKAGE_JSON = Path(__file__).parent.parent / "package.json"
-CANONICAL_VERSION = json.loads(PACKAGE_JSON.read_text()).get("version", "0.1.5")
+CANONICAL_VERSION = json.loads(PACKAGE_JSON.read_text()).get("version", "0.1.6")
 
 def test_vine_version():
     code, out, err = run_vine("--version")
